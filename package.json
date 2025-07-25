@@ -1,0 +1,39 @@
+{
+  "name": "ityukit-mdbbs",
+  "version": "0.0.0",
+  "description": "",
+  "exports": "./src/bin/run.js",
+  "type": "module",
+  "scripts": {
+    "build:migrate": "NODE_ENV=production ./node_modules/.bin/knex migrate:latest --env production --knexfile ./src/bin/knex_file.js",
+    "build:migrate:rollback": "NODE_ENV=production ./node_modules/.bin/knex migrate:rollback --env production --knexfile ./src/bin/knex_file.js",
+    "debug:build:migrate": "NODE_ENV=development ./node_modules/.bin/knex migrate:latest --env development --knexfile ./src/bin/knex_file.js",
+    "debug:build:migrate:rollback": "NODE_ENV=development ./node_modules/.bin/knex migrate:rollback --env development --knexfile ./src/bin/knex_file.js",
+    "debug:start": "NODE_ENV=development node ./src/bin/run.js",
+    "debug": "npm run debug:build:migrate && npm run debug:start",
+    "start": "NODE_ENV=production node ./src/bin/run.js"
+  },
+  "author": "Ituki Kirihara",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "axios": "1.11.0",
+    "bcrypt": "6.0.0",
+    "chalk": "5.4.1",
+    "date-format": "4.0.14",
+    "debug": "4.4.1",
+    "diff": "8.0.2",
+    "dotenv": "17.2.1",
+    "ejs": "3.1.10",
+    "express": "5.1.0",
+    "express-session": "1.18.2",
+    "knex": "3.1.0",
+    "log4js": "6.9.1",
+    "lodash": "4.17.21",
+    "lru-cache": "11.1.0",
+    "pg": "8.16.3",
+    "redis": "5.6.1",
+    "yaml": "2.8.0"
+  },
+  "devDependencies": {
+  }
+}

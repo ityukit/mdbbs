@@ -1,0 +1,52 @@
+global:
+  cache:
+    type: 'redis' # 'memory' or 'redis'
+  database:
+    type: 'postgres'
+
+  postgres:
+    client: 'pg'
+    connection:
+      host: '127.0.0.1'
+      port: 5432
+      database: 'postgres_dev'
+      user: 'postgres'
+      password: 'postgres'
+      requestTimeout: 2000
+    pool:
+      min: 10
+      max: 50
+    migrations:
+      directory: '../migrations'
+      tableName: 'knex_migrations'
+
+  redis:
+    host: '127.0.0.1'
+    port: 6379
+    db: 1
+    password: ''
+    prefix: 'dev'
+
+  memory:
+    max: 1000
+    ttl: 3600
+
+  logger:
+    level: 'debug'
+    transports:
+      - type: 'console'
+      - type: 'file'
+        filename: 'development.log'
+        maxSize: '10m'
+        maxFiles: 5
+
+Modules:
+  UserManager:
+    HASHING_SUGAR_KEY: 08uytrecdftvgnhujimiuhytrcdfimjok
+    passwordCheck:
+      lockout:
+        count: 10
+        second: 10
+      unknown_user:
+        hash_size: 10
+        rand_unlock: 0.05
