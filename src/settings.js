@@ -45,11 +45,6 @@ export default function setting(env, home, defaultconfig, config) {
     module_config: {
     },
     password: {
-      sugar:{
-        key1: "ou)_)Htvcw769nimwjow7800ij",
-        key2: config_override(defaultconfig.Modules.UserManager.HASHING_SUGAR_KEY, config.Modules?.UserManager?.HASHING_SUGAR_KEY),
-        key3: process.env.PASSWORD_HASHING_SUGAR_KEY ? process.env.PASSWORD_HASHING_SUGAR_KEY : '0ihnr$R^T&NGR',
-      }
     },
     extra:{
       function: {
@@ -68,5 +63,10 @@ export default function setting(env, home, defaultconfig, config) {
   for (const k of Object.keys(defaultconfig.Modules)) {
     r.module_config[k] = config_override(defaultconfig.Modules[k], config.Modules[k]);
   }
+  r.password.sugar = "ou)_)Htvcw769nimwjow7800ij" +
+    (config_override(defaultconfig.Modules.UserManager.HASHING_SUGAR_KEY, config.Modules?.UserManager?.HASHING_SUGAR_KEY) || '') +
+    (process.env.PASSWORD_HASHING_SUGAR_KEY || '') +
+    '0ihnr$R^T&NGR';
+
   return r;
 }

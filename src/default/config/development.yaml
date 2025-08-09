@@ -31,6 +31,22 @@ global:
     max: 1000
     ttl: 3600
 
+  s3:
+    client:
+      bucket: 'dev'
+      region: ''
+      endpoint: 'http://127.0.0.1:4568'
+      credentials:
+        accessKeyId: 'my-access-key-id'
+        secretAccessKey: 'my-secret-access-key'
+    server:
+      enabled: true
+      port: 4568
+      address: '127.0.0.1'
+      serviceEndpoint: 'http://127.0.0.1:4568'
+      silent: false
+      directory: './data/s3/'
+
   logger:
     level: 'debug'
     transports:

@@ -4,7 +4,7 @@
 
 ```
 create user *DB_USERNAME* with password '*DB_PASSWORD*';
-create database *DB_NAME* with owner *DB_USERNAME*;
+create database *DB_NAME* with owner *DB_USERNAME* template 'template0' ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C';
 ```
 
 ## install
