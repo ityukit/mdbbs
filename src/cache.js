@@ -4,13 +4,15 @@ const settings = init();
 
 export default class Cache {
   constructor() {
-    this.cache = settings.global[settings.global.cache.type];
-    if (this.cache === 'redis') {
+    this.cache = null;
+    this.cacheType = settings.global.cache.type;
+    this.cacheConfig = settings.global[settings.global.cache.type];
+    if (this.cacheType === 'redis') {
       this.cache = import('./cache/redis.js').then((module) => new module.default(settings));
-    } else if (this.cache === 'memory') {
+    } else if (this.cacheType === 'memory') {
       this.cache = import('./cache/memory.js').then((module) => new module.default(settings));
     } else {
-      throw new Error(`Unsupported cache type: ${settings.global[settings.global.cache.type]}`);
+      throw new Error(`Unsupported cache type: ${this.cacheType}`);
     }
   }
 

@@ -87,6 +87,10 @@ export default class Memory {
     this.prefix += this.module_prefix;
   }
 
+  async createNewClientInstance() {
+    return new LRUCache(this.clientOption);
+  }
+
   async run(callback) {
     this.logger.trace('in run');
     let ret;

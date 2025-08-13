@@ -1,6 +1,6 @@
 global:
   cache:
-    type: 'redis' # 'memory' or 'redis'
+    type: 'memory' # 'memory' or 'redis'
   database:
     type: 'postgres'
 
@@ -60,6 +60,8 @@ global:
 Modules:
   UserManager:
     HASHING_SUGAR_KEY: ikuhytg678u9iki6tgss
+    HASHING_PEPPER_KEY: IO(Uuj88gytyj9ikogty)
+    BCRYPT_SALT_ROUNDS: 12
     passwordCheck:
       lockout:
         count: 10
