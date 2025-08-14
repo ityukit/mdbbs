@@ -1,4 +1,10 @@
 global:
+  app:
+    port: 3000
+    urlBase: /mdbbs
+  session:
+    secret: 'I(H&@*ikotyu)'
+    type: 'file-store' # 'file-store' or 'redis'
   cache:
     type: 'memory' # 'memory' or 'redis'
   database:

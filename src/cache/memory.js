@@ -87,7 +87,7 @@ export default class Memory {
     this.prefix += this.module_prefix;
   }
 
-  async createNewClientInstance() {
+  createNewClientInstance() {
     return new LRUCache(this.clientOption);
   }
 
