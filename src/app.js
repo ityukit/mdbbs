@@ -49,7 +49,7 @@ main.use(
     resave: false,
     saveUninitialized: true,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      maxAge: 1000 * settings.config.session.maxAge, // msec
       secure: false, // true if using https
       httpOnly: true,
     },
@@ -58,12 +58,13 @@ main.use(
         const FileStore = sessionFileStore(session);
         return new FileStore({
           path: './sessions',
-          ttl: 60 * 60 * 24 * 7, // 7 days
+          ttl: settings.config.session.maxAge, // in seconds
         });
       } else if (settings.config.session.type === 'redis') {
         return new sessionRedis.RedisStore({
           client: (new redisCache(settings, __filename)).createNewClientInstance(),
           prefix: 'sess:',
+          ttl: settings.config.session.maxAge, // in seconds
         });
       }
     })(),

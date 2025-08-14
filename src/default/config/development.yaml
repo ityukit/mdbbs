@@ -5,6 +5,7 @@ global:
   session:
     secret: 'I(H&@*ikotyu)'
     type: 'file-store' # 'file-store' or 'redis'
+    maxAge: 604800 # in seconds # 7days 
   cache:
     type: 'memory' # 'memory' or 'redis'
   database:
