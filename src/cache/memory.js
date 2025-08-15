@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { LRUCache } from 'lru-cache'
 import loggerGenerator, {moduleFilepathGenerator,moduleNameGenerator} from '../logger.js';
-import { max } from 'lodash';
 
 const __filename = fileURLToPath(import.meta.url);
 

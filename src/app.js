@@ -4,22 +4,25 @@ import util from 'node:util';
 import init from './init.js';
 import loggerGenerator from './logger.js';
 import database from './database.js';
+import cache from './cache.js';
 
 
 import express from 'express';
 import session from 'express-session';
 import sessionFileStore from 'session-file-store';
 import * as sessionRedis from 'connect-redis';
+import S3rver from 's3rver';
 import redisCache from './cache/redis.js';
 
 import express_api from './routes/api.js'
 import express_auth from './routes/auth.js';
 import express_contents from './routes/contents.js';
 import express_meta from './routes/meta.js';
+import { se } from 'date-fns/locale';
 
 const __filename = fileURLToPath(import.meta.url);
 
-const settings = init();
+const settings = init.getSettings();
 const logger = loggerGenerator(settings);
 
 const app = express();
@@ -57,7 +60,7 @@ main.use(
       if (settings.config.session.type === 'file-store') {
         const FileStore = sessionFileStore(session);
         return new FileStore({
-          path: './sessions',
+          path: settings.config.sessionFileStore.directory,
           ttl: settings.config.session.maxAge, // in seconds
         });
       } else if (settings.config.session.type === 'redis') {
@@ -101,10 +104,43 @@ app.use((req, res, next) => {
   res.status(404).send('Sorry, the page you are looking for does not exist!');
 });
 
+let s3rver = null;
+if (settings.config.s3.server.enabled) {
+  s3rver = new S3rver({
+    address: settings.config.s3.server.address,
+    port: settings.config.s3.server.port,
+    silent: settings.config.s3.server.silent,
+    directory: settings.config.s3.server.directory,
+    vhostBuckets: false,
+  });
+  s3rver.run((err, host, port) => {
+    if (err) {
+      logger.error(`S3 server failed to start: ${err.message}`);
+      throw err;
+    } else {
+      logger.info(`S3 server started at ${settings.config.s3.server.address}:${settings.config.s3.server.port}`);
+    }
+  });
+}
+
 var server = app.listen(settings.config.app.port, function(){
     logger.info("MDBBS is listening to PORT:" + server.address().port);
 });
 
+process.on('SIGTERM', () => {
+  // サーバをシャットダウンする
+  if (s3rver) {
+    s3rver.close(() => {
+      logger.info('S3 server closed.');
+    });
+  }
+  server.close(() => {
+    // シャットダウン時の処理を実装する
+    database.close();
+    logger.info('SIGTERM signal received.');
+  });
+});
+    
 export default {
   app,
   main,

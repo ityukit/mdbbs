@@ -7,7 +7,7 @@ pg.types.setTypeParser(20, 'text', (a) => {
   return Number.isSafeInteger(i) ? i : NaN;
 });
 
-const settings = init();console.log("Settings loaded:", settings.config);
+const settings = init.getSettings();
 const database = Knex(settings.config[settings.config.database.type]);
 
 export default database;

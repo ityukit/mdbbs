@@ -53,6 +53,9 @@ global:
       serviceEndpoint: 'http://127.0.0.1:4568'
       silent: false
       directory: './data/s3/'
+  
+  sessionFileStore:
+    directory: './data/sessions/'
 
   logger:
     level: 'debug'

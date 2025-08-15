@@ -7,6 +7,8 @@ import chalk from 'chalk';
 import util from 'node:util';
 import fs from 'fs';
 
+import init from './init.js';
+
 //import path from 'node:path';
 //import { console } from 'inspector';
 
