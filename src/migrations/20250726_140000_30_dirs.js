@@ -18,5 +18,5 @@ export function up(knex) {
 }
 
 export function down(knex) {
-  return knex.schema.dropTable('tags');
+  return knex.schema.dropTable('dirs');
 }

@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import util from 'node:util';
+import crypto from 'crypto'; 
 
 import init from './init.js';
 import loggerGenerator from './logger.js';
@@ -43,7 +44,9 @@ app.use((err, req, res, next) => {
   logger.error(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${err.message}`);
   res.status(500).send('Internal Server Error');
 });
-
+// parser
+main.use(express.json());
+main.use(express.urlencoded({ extended: true }));
 // session
 main.use(
   session({
@@ -73,18 +76,51 @@ main.use(
     })(),
   })
 )
+main.use((req, res, next) => {
+  if (!req.session) {
+    return res.status(401).send('cannot access this page without session');
+  }
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = {
+      id: crypto.randomBytes(16).toString('hex'),
+      lastId: crypto.randomBytes(16).toString('hex'),
+      createdAt: Date.now(),
+    };
+  }
+  if (req.session.csrfToken.createdAt < Date.now() - 3600000) { // 1 hour
+    const currentId = req.session.csrfToken.id;
+    req.session.csrfToken = {
+      id: crypto.randomBytes(16).toString('hex'),
+      lastId: currentId,
+      createdAt: Date.now(),
+    };
+  }
+  next();
+});
+main.use((req, res, next) => {
+  if (req.method === 'POST') {
+    // CSRF対策
+    // /api/auth/loginだけはCSRFトークンをチェックしない
+    if (req.path === '/api/auth/login') {
+      return next();
+    }
+    const token = req.body?._csrf;
+    if (token && (token === req.session.csrfToken.id || token === req.session.csrfToken.lastId)) {
+      return next();
+    }
+    return res.status(403).json({ error: 'Invalid CSRF token' });
+  }
+  next();
+});
 
-const auth = express_auth(app,main,settings);
-const contents = express_contents(app,main,settings);
-const meta = express_meta(app,main,settings);
-const api = express_api(app,main,settings);
+const auth = await express_auth(app,main,settings);
+const contents = await express_contents(app,main,settings);
+const meta = await express_meta(app,main,settings);
+const api = await express_api(app,main,settings);
 
 // default setting
 main.set('view engine', 'hbs');
 main.use(express.static('public'));
-// parser
-main.use(express.json());
-main.use(express.urlencoded({ extended: true }));
 
 main.use('/api', api);
 main.use('/auth', auth);

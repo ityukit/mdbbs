@@ -1,6 +1,6 @@
 import express from 'express';
 
-export default function express_contents(app, main, settings) {
+export default async function express_contents(app, main, settings) {
   const contents = express();
   const router = express.Router();
   contents.use((req, res, next) => {

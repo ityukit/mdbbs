@@ -17,7 +17,6 @@ export function up(knex) {
     table.timestamp('last_updated_at', { precision: 6 }).defaultTo(knex.fn.now(6));
 
     table.unique(['dirtree_id', 'contents_id']);
-    table.index(['dirtree_id', 'status']);
     table.index(['dirtree_id','title']);
     table.index(['dirtree_id','status']);
     table.index(['dirtree_id','created_user_id']);

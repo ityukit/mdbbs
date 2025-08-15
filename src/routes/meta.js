@@ -1,6 +1,6 @@
 import express from 'express';
 
-export default function express_meta(app, main, settings) {
+export default async function express_meta(app, main, settings) {
   const meta = express();
   const router = express.Router();
 

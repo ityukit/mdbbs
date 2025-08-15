@@ -1,5 +1,3 @@
-import { TableBuilder } from "knex";
-
 export function up(knex) {
   return knex.schema.createTable('map_thread_tag', function createTable(table) {
     table.bigIncrements('id').primary();

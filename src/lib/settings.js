@@ -106,7 +106,7 @@ export default function setting(env, home, defaultconfig, config) {
     '(96ted90pYGR%@UJUWUH^TH8k92jwyji6fgh79ki iu9ko)';
   const locales = [];
   let defaultLocale = null;
-  for (const n of fs.readdirSync('src/locales')) {
+  for (const n of fs.readdirSync(home + './src/locales')) {
     const m = n.match(/^([a-zA-Z_]+).yaml$/);
     if (m){
       const l = m[1];
@@ -127,7 +127,7 @@ export default function setting(env, home, defaultconfig, config) {
     defaultLocale,
     cookie: 'locales',
     queryParameter: 'lang',
-    directory: 'src/locales',
+    directory: home + './src/locales',
     objectNotation: true,
     extension: '.yaml',
     parser: yaml

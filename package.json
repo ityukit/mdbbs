@@ -11,7 +11,8 @@
     "debug:build:migrate:rollback": "NODE_ENV=development ./node_modules/.bin/knex migrate:rollback --env development --knexfile ./src/bin/knex_file.js",
     "debug:start": "NODE_ENV=development node ./src/bin/run.js",
     "debug": "npm run debug:build:migrate && npm run debug:start",
-    "start": "NODE_ENV=production node ./src/bin/run.js"
+    "start": "NODE_ENV=production node ./src/bin/run.js",
+    "userApply": "NODE_ENV=production node ./src/bin/userApply.js"
   },
   "author": "Ituki Kirihara",
   "license": "UNLICENSED",
