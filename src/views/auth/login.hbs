@@ -1,0 +1,47 @@
+{{> header }}
+{{> topNavigator }}
+
+<script>
+function login(){
+  $.ajax({
+    url: "{{baseUrl}}/api/auth/login",
+    method: "POST",
+    data: {
+      username: $("#InputLoginId").val(),
+      password: $("#InputLoginPassword").val(),
+      _csrf: "{{_csrf}}"
+    },
+  })
+  .done(function(response) {
+      if (response.redirectTo) {
+        window.location.href = response.redirectTo;
+      } else {
+        alert("{{ __ 'page.auth.login.loginfail' }}");
+      }
+    })
+    .fail(function(jqXHR, textStatus, errorThrown) {
+      alert("Login failed: " + errorThrown);
+    });
+  return false; // Prevent default form submission
+}
+
+</script>
+
+<section id="main_section">
+  <div class="container">
+
+<form>
+  <div class="mb-3">
+    <label for="InputLoginId" class="form-label">{{ __ 'page.auth.login.loginId' }}</label>
+    <input type="email" class="form-control" id="InputLoginId">
+  </div>
+  <div class="mb-3">
+    <label for="InputLoginPassword" class="form-label">{{ __ 'page.auth.login.loginPassword' }}</label>
+    <input type="password" class="form-control" id="InputLoginPassword">
+  </div>
+  <button type="submit" class="btn btn-primary" onclick="return login();">{{ __ 'page.auth.login.submit' }}</button>
+</form>
+
+  </div>
+</section>
+{{> footer }}

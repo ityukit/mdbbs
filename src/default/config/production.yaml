@@ -2,6 +2,8 @@ global:
   app:
     port: 3000
     urlBase: /mdbbs
+    name: MDBBS
+    author: Ituki Kirihara/NI
   session:
     secret: 'iygyuikoploiuhygtrfed'
     type: 'file-store' # 'file-store' or 'redis'

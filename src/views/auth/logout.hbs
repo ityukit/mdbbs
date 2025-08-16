@@ -1,0 +1,44 @@
+{{> header }}
+{{> topNavigator }}
+
+<script>
+function logout(){
+  $.ajax({
+    url: "{{baseUrl}}/api/auth/logout",
+    method: "POST",
+    data: {
+      _csrf: "{{_csrf}}"
+    },
+  })
+  .done(function(response) {
+      if (!response.error) {
+        $("#goLogout").addClass("invisible");
+        $("#logoutMessage").removeClass("invisible");
+      } else {
+        alert("{{ __ 'page.auth.logout.logoutfail' }}");
+      }
+    })
+    .fail(function(jqXHR, textStatus, errorThrown) {
+      alert("Logout failed: " + errorThrown);
+    });
+  return false; // Prevent default form submission
+}
+
+</script>
+
+<section id="main_section">
+  <div class="container">
+    <h2>{{ __ 'page.auth.logout.message' }}</h2>
+
+<div id="goLogout" class="visible">
+  <form>
+    <button type="submit" class="btn btn-primary" onclick="return logout();">{{ __ 'page.auth.logout.submit' }}</button>
+    <button type="button" class="btn btn-secondary" onclick="window.history.back();">{{ __ 'page.auth.logout.cancel' }}</button>
+  </form>
+</div>
+<div id="logoutMessage" class="invisible">
+  <p>{{ __ 'page.auth.logout.logoutsuccess' }}</p>
+  <a href="{{baseUrl}}/auth/login">{{ __ 'page.auth.logout.relogin' }}</a>
+</div>
+</section>
+{{> footer }}

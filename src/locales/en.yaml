@@ -2,3 +2,10 @@ hello: test
 test:
  test2:
   test3: test.test2.test3
+page:
+ auth:
+  login:
+   title: page.auth.login.title
+   description: page.auth.login.description
+   pageTitle: page.auth.login.pageTitle
+   pageDescription: page.auth.login.pageDescription

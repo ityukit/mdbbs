@@ -1,0 +1,25 @@
+@charset "utf-8";
+
+body{
+	background-color: #fff;
+	color: #000;
+}
+
+a:visited {
+	background-color: transparent;
+	color: #00a;
+}
+
+.navbar-fixed-top {
+	border-color: #88f;
+	background-color: #aaf !important;
+}
+
+.navbar-fixed-top a {
+	color: #008;
+}
+
+header {
+	background-color: #bbf;
+	color: #333;
+}

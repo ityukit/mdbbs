@@ -12,6 +12,7 @@ import express from 'express';
 import session from 'express-session';
 import sessionFileStore from 'session-file-store';
 import * as sessionRedis from 'connect-redis';
+import hbs from 'hbs'
 import S3rver from 's3rver';
 import redisCache from './cache/redis.js';
 
@@ -22,6 +23,7 @@ import express_meta from './routes/meta.js';
 import { se } from 'date-fns/locale';
 
 const __filename = fileURLToPath(import.meta.url);
+const __dirname = __filename.substring(0, __filename.lastIndexOf('/'));
 
 const settings = init.getSettings();
 const logger = loggerGenerator(settings);
@@ -112,6 +114,16 @@ main.use((req, res, next) => {
   }
   next();
 });
+main.use(settings.i18n.init);
+main.use(function (req, res, next) {
+  if (req.session.locale) {
+    settings.i18n.setLocale(req, req.session.locale);
+  }
+  if (req.query?.lang) {
+    settings.i18n.setLocale(req, req.query.lang);
+  }
+  next();
+});
 
 const auth = await express_auth(app,main,settings);
 const contents = await express_contents(app,main,settings);
@@ -119,8 +131,16 @@ const meta = await express_meta(app,main,settings);
 const api = await express_api(app,main,settings);
 
 // default setting
+hbs.registerPartials(__dirname + '/views', function (err) {});
 main.set('view engine', 'hbs');
-main.use(express.static('public'));
+main.set('views', __dirname + '/views');
+auth.set('view engine', 'hbs');
+auth.set('views', __dirname + '/views');
+contents.set('view engine', 'hbs');
+contents.set('views', __dirname + '/views');
+meta.set('view engine', 'hbs');
+meta.set('views', __dirname + '/views');
+main.use('/public',express.static('src/public'));
 
 main.use('/api', api);
 main.use('/auth', auth);

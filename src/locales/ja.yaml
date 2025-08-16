@@ -1,1 +1,33 @@
-hello: test
+page:
+  auth:
+    login:
+      title: "ログイン"
+      description: "システムにログインします"
+      pageTitle: "ログイン"
+      pageDescription: ["システムにログインします"]
+      loginId: "ログインID"
+      loginPassword: "ログインパスワード"
+      submit: "ログイン"
+      loginfail: "ログインに失敗しました\\nIDまたはパスワードが正しくありません"
+    logout:
+      title: "ログアウト"
+      description: "システムからログアウトします"
+      pageTitle: "ログアウト"
+      pageDescription: ["システムからログアウトします"]
+      message: "本当にログアウトしますか？"
+      submit: "ログアウト"
+      cancel: "キャンセル(一つ前のページへ戻る)"
+      logoutfail: "ログアウトに失敗しました"
+      logoutsuccess: "ログアウトに成功しました"
+      relogin: "再ログイン"
+
+views:
+  navigator:
+    account:
+      dropdown: "アカウント(未ログイン)"
+      dropdownLogin: "%1$s さん"
+      settings: "設定"
+      profile: "プロフィール"
+      login: "ログイン"
+      logout: "ログアウト"
+      loginId: "ログインID"

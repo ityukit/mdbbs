@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="jp">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  {{#if description}}
+  <meta name="description" content="{{description}}">
+  {{/if}}
+  {{#if noindex}}
+  <meta name="robots" content="noindex" />
+  <meta name="robots" content="nofollow" />
+  {{/if}}
+
+  <title>{{title}}</title>
+
+  <!-- header -->
+  <meta name="author" content="{{author}}">
+
+  <!-- Bootstrap core CSS -->
+  <link href="{{baseUrl}}/public/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap core JavaScript -->
+  <script src="{{baseUrl}}/public/static/jquery/jquery.min.js"></script>
+  <script src="{{baseUrl}}/public/static/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <!-- Material Icon -->
+  <link href="{{baseUrl}}/public/static/material-icons/material-icons.css" rel="stylesheet">
+  <!-- default css -->
+  <link href="{{baseUrl}}/public/static/css/global.css" rel="stylesheet">
+  <link href="{{baseUrl}}/public/static/css/defaultColor.css" rel="stylesheet">
+  <!-- csrf -->
+  <script>
+    var _csrf = "{{_csrf}}";
+  </script>
+  {{#if custom_header_tag}}
+  {{custom_header_tag}}
+  {{/if}}
+
+</head>
+
+<body id="page-top">
+<div class="footerFixed">
+
