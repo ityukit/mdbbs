@@ -2,8 +2,10 @@ import phash from '../../../lib/phash.js';
 import _ from 'lodash';
 import database from '../../../database.js';
 import cache from '../../../cache.js';
+import init from '../../../init.js';
 
-const passwordNone = ':0:aNGqizCzJ5++HOemzx61Tw==:wKvv+Myk0fJUk82m7VFk9A==:vZlgEWLUGbZolQiQVXvkjA==:luEF8nbUS2ffOKrXXzuRgSk+efFcBZPCOSMfCMzA1XNNcuQ7bj1B+AdXWZ3s/XEP6KehkBfuq44UG6yiadOl3g==';
+const pHash = new phash(init.getSettings());
+const passwordNone = pHash.hashPassword('');
 
 export default async function login(app, main, api, subdir, moduleName, settings) {
   // ログイン処理

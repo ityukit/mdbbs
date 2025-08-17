@@ -21,6 +21,7 @@ import express_auth from './routes/auth.js';
 import express_contents from './routes/contents.js';
 import express_meta from './routes/meta.js';
 import express_account from './routes/account.js';
+import setting from './lib/settings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = __filename.substring(0, __filename.lastIndexOf('/'));
@@ -57,6 +58,7 @@ main.use(
     resave: false,
     saveUninitialized: true,
     cookie: {
+      path: settings.config.app.urlBase || "/",
       maxAge: 1000 * settings.config.session.maxAge, // msec
       secure: false, // true if using https
       httpOnly: true,
@@ -184,7 +186,7 @@ if (settings.config.s3.server.enabled) {
 }
 
 var server = app.listen(settings.config.app.port, function(){
-    logger.info("MDBBS is listening to PORT:" + server.address().port);
+    logger.info("MDBBS is listening to PORT:" + settings.config.app.port);
 });
 
 process.on('SIGTERM', () => {
