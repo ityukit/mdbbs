@@ -1,4 +1,5 @@
 import express from 'express';
+import dynamicLoader from '../lib/dynamicLoader.js';
 
 export default async function express_contents(app, main, settings) {
   const contents = express();
@@ -16,8 +17,9 @@ export default async function express_contents(app, main, settings) {
     res.redirect(settings.config.app.urlBase + '/auth/login');
   });
 
-  contents.get('/', (req, res) => {
-    res.send('Contents Home');
+  dynamicLoader('./src/routes/contents', async (subdir,moduleName,module) => {
+    const def = await module.default(app, main, contents, subdir, moduleName, settings);
+    if (def) contents.use(def);
   });
 
   return contents;

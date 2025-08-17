@@ -1,0 +1,48 @@
+{{> header }}
+{{> topNavigator }}
+
+<script>
+  function updateTree(){
+    var keyword = document.getElementById("treeKeyword").value;
+    $("#treeview").empty();
+    $("#treeview").unbind();
+    $("#treeview").treeview({
+      animated: 100,
+      url: "{{baseUrl}}/api/contents/tree?keyword=" + keyword
+    });
+  }
+  addEventListener("load", (event) => {
+    updateTree();
+  });
+</script>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-3 leftmenu">
+      <div id="treeviewArea">
+        <div class="input-group mb-3">
+          <input type="text" id="treeKeyword" class="form-control form-control-sm" placeholder="{{ __ 'page.contents.tree.search' }}" aria-label="Search" aria-describedby="button-addon2">
+          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="updateTree()">{{ __ 'page.contents.tree.searchButton' }}</button>
+        </div>
+        <ul id="treeview" class="treeview"></ul>
+      </div>
+    </div>
+    <div class="col-md-9">
+      {{#if false}}
+      <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item active"><a href="{{baseUrl}}/contents">Dashboard</a></li>
+        </ol>
+      </nav>
+      {{/if}}
+      <section id="main_section">
+        <div id="contentArea">
+          <!-- Content will be loaded here -->
+          Contents
+        </div>
+      </section>
+    </div>
+  </div> <!-- row -->
+</div>
+
+{{> footer }}

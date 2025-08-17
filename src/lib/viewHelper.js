@@ -10,7 +10,7 @@ export default {
     param['_csrf'] = _.cloneDeep(req.session.csrfToken.id);
     param['locale'] = _.cloneDeep(settings.i18n.getLocale(req));
     // default setting
-    param['title'] = _.cloneDeep(req.__('page.' + i18nNode + '.title'));
+    param['title'] = _.cloneDeep(req.__('page.' + i18nNode + '.title')) + ' - ' + param['systemName']
     param['description'] = _.cloneDeep(req.__('page.' + i18nNode + '.description'));
     param['pageTitle'] = _.cloneDeep(req.__('page.' + i18nNode + '.pageTitle'));
     param['pageDescription'] = _.cloneDeep(req.__('page.' + i18nNode + '.pageDescription'));

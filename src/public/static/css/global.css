@@ -74,3 +74,6 @@ footer{
   display: flex;
   align-items: center !important;
 }
+.leftmenu {
+  padding: 0;
+}

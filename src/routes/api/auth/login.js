@@ -1,28 +1,65 @@
-import express from 'express';
-export default async function login(app, main, api, subdir, moduleName, settings) {
-  const login = express();
+import phash from '../../../lib/phash.js';
+import _ from 'lodash';
+import database from '../../../database.js';
+import cache from '../../../cache.js';
 
+const passwordNone = ':0:aNGqizCzJ5++HOemzx61Tw==:wKvv+Myk0fJUk82m7VFk9A==:vZlgEWLUGbZolQiQVXvkjA==:luEF8nbUS2ffOKrXXzuRgSk+efFcBZPCOSMfCMzA1XNNcuQ7bj1B+AdXWZ3s/XEP6KehkBfuq44UG6yiadOl3g==';
+
+export default async function login(app, main, api, subdir, moduleName, settings) {
   // ログイン処理
-  login.post('/auth/login', async (req, res) => {
+  api.post('/auth/login', async (req, res) => {
     const username = req.body?.username;
     const password = req.body?.password;
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required.' });
+      return res.json({ error: 'requireUserPassword' });
     }
 
     try {
-      // ユーザー認証のロジックをここに実装
-      const user = {id:0, loginId: 'testuser', name: 'testuserName'}
+      const pHash = new phash(settings);
+      const user = await database.transaction(async (tx) => {
+        const user = await tx.select('id','login_id','hashed_password','display_name','enabled','locked').where({ login_id: username }).from('users').first();
+        if (!user || user.hashed_password === null) {
+          // dummy run
+          await pHash.verifyPassword('', passwordNone);
+          // error
+          res.json({ error: 'failUserPassword' });
+          return null;
+        }
+        if (!(await pHash.verifyPassword(password, user.hashed_password))) {
+          // error
+          res.json({ error: 'failUserPassword' });
+          return null;
+        }
+        // user and password ok
+        if (!user.enabled){
+          res.json({ error: 'userDisabled' });
+          return null;
+        }
+        if (user.locked) {
+          res.json({ error: 'userLocked' });
+          return null;
+        }
+        // user login ok!
+        return user;
+      });
       if (!user) {
-        return res.status(401).json({ error: 'Invalid username or password.' });
+        return;
       }
 
       // セッションにユーザー情報を保存
-      req.session.user = user;
+      req.session.user = {
+        id: user.id,
+        loginId: user.login_id,
+        name: user.display_name,
+      };
+      // キャッシュにユーザー情報を保存
+      await cache.run((client)=>{
+        client.set(`user:${user.id}`, _.cloneDeep(req.session.user));
+      });
 
       res.json({
         message: 'Login successful',
-        user,
+        user: req.session.user,
         redirectTo: req.session.redirectTo || settings.config.app.urlBase,
       });
       req.session.redirectTo = null;
@@ -32,5 +69,5 @@ export default async function login(app, main, api, subdir, moduleName, settings
     }
   });
 
-  return login;
+  return null;
 }

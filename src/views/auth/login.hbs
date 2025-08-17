@@ -13,10 +13,18 @@ function login(){
     },
   })
   .done(function(response) {
-      if (response.redirectTo) {
-        window.location.href = response.redirectTo;
+      if (response.error) {
+        if (response.error === "requireUserPassword") {
+          alert("{{ __ 'page.auth.login.requireUserPassword' }}");
+        } else if (response.error === "disabledUser") {
+          alert("{{ __ 'page.auth.login.disabledUser' }}");
+        } else if (response.error === "lockedUser") {
+          alert("{{ __ 'page.auth.login.lockedUser' }}");
+        } else {
+          alert("{{ __ 'page.auth.login.failUserPassword' }}");
+        }
       } else {
-        alert("{{ __ 'page.auth.login.loginfail' }}");
+        window.location.href = response.redirectTo || "{{baseUrl}}/contents";
       }
     })
     .fail(function(jqXHR, textStatus, errorThrown) {

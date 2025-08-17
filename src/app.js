@@ -20,7 +20,7 @@ import express_api from './routes/api.js'
 import express_auth from './routes/auth.js';
 import express_contents from './routes/contents.js';
 import express_meta from './routes/meta.js';
-import { se } from 'date-fns/locale';
+import express_account from './routes/account.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = __filename.substring(0, __filename.lastIndexOf('/'));
@@ -129,6 +129,7 @@ const auth = await express_auth(app,main,settings);
 const contents = await express_contents(app,main,settings);
 const meta = await express_meta(app,main,settings);
 const api = await express_api(app,main,settings);
+const account = await express_account(app,main,settings);
 
 // default setting
 hbs.registerPartials(__dirname + '/views', function (err) {});
@@ -140,12 +141,15 @@ contents.set('view engine', 'hbs');
 contents.set('views', __dirname + '/views');
 meta.set('view engine', 'hbs');
 meta.set('views', __dirname + '/views');
+account.set('view engine', 'hbs');
+account.set('views', __dirname + '/views');
 main.use('/public',express.static('src/public'));
 
 main.use('/api', api);
 main.use('/auth', auth);
 main.use('/contents', contents);
 main.use('/meta', meta);
+main.use('/account', account);
 main.get('/', (req, res) => {
   res.redirect(settings.config.app.urlBase + '/contents');
 });

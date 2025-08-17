@@ -23,3 +23,9 @@ header {
 	background-color: #bbf;
 	color: #333;
 }
+
+.leftmenu {
+	background-color: #f5f5ff;
+	border-right: 1px solid #eee;
+}
+

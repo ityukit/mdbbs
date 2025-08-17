@@ -22,8 +22,8 @@ class Cache {
     return Cache.instance;
   }
 
-  run(callback) {
-    return this.cache.run(callback);
+  async run(callback) {
+    return await this.cache.run(callback);
   }
 }
 

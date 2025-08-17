@@ -9,6 +9,12 @@ page:
       loginPassword: "ログインパスワード"
       submit: "ログイン"
       loginfail: "ログインに失敗しました\\nIDまたはパスワードが正しくありません"
+
+      requireUserPassword: ユーザー名とパスワードが必要です
+      failUserPassword: ユーザー名またはパスワードが正しくありません
+      disabledUser: アカウントが無効化されています
+      lockedUser: アカウントがロックされています
+
     logout:
       title: "ログアウト"
       description: "システムからログアウトします"
@@ -20,6 +26,15 @@ page:
       logoutfail: "ログアウトに失敗しました"
       logoutsuccess: "ログアウトに成功しました"
       relogin: "再ログイン"
+
+  contents:
+    index:
+      title: "ダッシュボード"
+      description: "ダッシュボード,スタートページ"
+      pageTitle: "ダッシュボード"
+    tree:
+      search: Tree検索
+      searchButton: 実行
 
 views:
   navigator:

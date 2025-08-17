@@ -128,9 +128,16 @@ export default function setting(env, home, defaultconfig, config) {
     cookie: 'locales',
     queryParameter: 'lang',
     directory: home + './src/locales',
+    autoReload: true,
+    updateFiles: false,
     objectNotation: true,
+    syncFiles: false,
     extension: '.yaml',
-    parser: yaml
+    parser: yaml,
+    preserveLegacyCase: true,
+    mustacheConfig: {
+      disable: false
+    }
   });
   i18n.setLocale(defaultLocale);
   r.i18n = i18n;

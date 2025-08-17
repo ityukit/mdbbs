@@ -23,13 +23,20 @@
   <script src="{{baseUrl}}/public/static/bootstrap/js/bootstrap.bundle.min.js"></script>
   <!-- Material Icon -->
   <link href="{{baseUrl}}/public/static/material-icons/material-icons.css" rel="stylesheet">
+  <!-- tree view -->
+  <link rel="stylesheet" href="{{baseUrl}}/public/static/treeview/jquery.treeview.css" rel="stylesheet">
+  <script src="{{baseUrl}}/public/static/treeview/jquery.treeview.js"></script>
+  <script src="{{baseUrl}}/public/static/treeview/jquery.treeview.edit.js"></script>
+  <script src="{{baseUrl}}/public/static/treeview/jquery.treeview.async.js"></script>
   <!-- default css -->
   <link href="{{baseUrl}}/public/static/css/global.css" rel="stylesheet">
   <link href="{{baseUrl}}/public/static/css/defaultColor.css" rel="stylesheet">
+  {{#if false}}
   <!-- csrf -->
   <script>
     var _csrf = "{{_csrf}}";
   </script>
+  {{/if}}
   {{#if custom_header_tag}}
   {{custom_header_tag}}
   {{/if}}
