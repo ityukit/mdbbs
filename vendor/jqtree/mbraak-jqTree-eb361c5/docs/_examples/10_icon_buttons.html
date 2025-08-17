@@ -1,0 +1,36 @@
+---
+title: Use icon toggle buttons
+js: examples/icon_buttons.js
+---
+
+<p class="flex justify-between">
+    <a href="../09_custom_html/">&laquo; Example 9</a>
+    <a href="../11_right-to-left/">Example 11 &raquo;</a>
+</p>
+
+<h1>Example 10 - use icon toggle buttons</h1>
+
+<p>
+    You can use the <strong>openedIcon</strong> and <strong>closedIcon</strong> options to use html for
+    the toggle buttons. You can for example use <a href="https://heroicons.com/">Hero icons</a>.
+</p>
+<div id="tree1" class="not-prose" data-url="/example_data/"></div>
+
+<h3>javascript</h3>
+
+{% highlight js %}
+$('#tree1').tree({
+    closedIcon: $(
+        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+            class="size-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25 21 12m0 0-3.75 3.75M21 12H3" />
+        </svg>`
+    ),
+    openedIcon: $(
+        `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+            class="size-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
+        </svg>`
+    )
+});
+{% endhighlight %}

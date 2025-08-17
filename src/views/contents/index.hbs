@@ -2,29 +2,62 @@
 {{> topNavigator }}
 
 <script>
-  function updateTree(){
-    var keyword = document.getElementById("treeKeyword").value;
-    $("#treeview").empty();
-    $("#treeview").unbind();
-    $("#treeview").treeview({
-      animated: 100,
-      url: "{{baseUrl}}/api/contents/tree?keyword=" + keyword
-    });
-  }
   addEventListener("load", (event) => {
-    updateTree();
+    const icon1 = document.createElement("i");
+    icon1.classList.add("material-icons");
+    icon1.textContent = "chevron_right";
+    const icon2 = document.createElement("i");
+    icon2.classList.add("material-icons");
+    icon2.textContent = "expand_more";
+    $('#tree').tree({
+      closedIcon: icon1,
+      openedIcon: icon2,
+      saveState: 'contents-tree-dashboard'
+    });
   });
+  function getAllNodes(data) {
+    const ret = [];
+    for(const dat of data) {
+      if (dat.children && dat.children.length > 0) {
+        ret.push(...getAllNodes(dat.children));
+      }
+      ret.push(dat.id);
+    }
+    return ret;
+  }
+  function searchTree() {
+    const keyword = document.getElementById("treeKeyword").value;
+    if (keyword === '') {
+      $('#tree').tree('loadDataFromUrl', "{{baseUrl}}/api/contents/tree");
+      $('#currentTreeKeywordText').text('');
+      $('#currentTreeKeyword').addClass('d-none');
+    } else {
+      $('#tree').tree('loadDataFromUrl', "{{baseUrl}}/api/contents/tree?keyword=" + encodeURIComponent(keyword),null, ()=>{
+        const data = $('#tree').tree('getTree').getData(true);
+        for(const nodeid of getAllNodes(data)){
+          if (nodeid){
+            $('#tree').tree('openNode', $('#tree').tree('getNodeById', nodeid), false);
+          }
+        }
+        $('#currentTreeKeywordText').text(keyword);
+        $('#currentTreeKeyword').removeClass('d-none');
+      });
+    }
+  }
 </script>
 
 <div class="container-fluid">
   <div class="row">
     <div class="col-md-3 leftmenu">
       <div id="treeviewArea">
-        <div class="input-group mb-3">
-          <input type="text" id="treeKeyword" class="form-control form-control-sm" placeholder="{{ __ 'page.contents.tree.search' }}" aria-label="Search" aria-describedby="button-addon2">
-          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="updateTree()">{{ __ 'page.contents.tree.searchButton' }}</button>
+        <div class="input-group">
+          <input type="text" id="treeKeyword" class="form-control form-control-sm" placeholder="{{ __ 'page.contents.tree.search' }}" aria-label="Search" aria-describedby="button-addon2" onkeyup="if($('#treeKeyword').val() === '' || event.key === 'Enter'){ searchTree(); }">
+          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="searchTree()">{{ __ 'page.contents.tree.searchButton' }}</button>
         </div>
-        <ul id="treeview" class="treeview"></ul>
+        <div id="currentTreeKeyword" class="d-none">
+          <span class="">{{ __ 'page.contents.tree.searchWord' }}</span>:<span id="currentTreeKeywordText"></span>
+        </div>
+        <div id="tree" data-url="{{baseUrl}}/api/contents/tree"></div>
       </div>
     </div>
     <div class="col-md-9">

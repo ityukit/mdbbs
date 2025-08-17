@@ -1,5 +1,6 @@
 import { el } from 'date-fns/locale';
 import database from '../../../database.js';
+import e from 'express';
 
 async function get_tree_traverse(id, currentDepth, maxDepth, db) {
   // check child
@@ -13,33 +14,64 @@ async function get_tree_traverse(id, currentDepth, maxDepth, db) {
   // 子ノードはいる
   const tree = [];
   if (maxDepth && currentDepth >= maxDepth){
-    return [];
+    return null;
   }
   for (const data of await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
                             .from('dirs')
                             .leftJoin('dirtree', 'dirtree.child_id', 'dirs.id')
                             .where('dirtree.parent_id', id)
                             .orderBy('dirs.display_name')){
-    const children = await get_tree_sub(data.id, keyword, currentDepth + 1, maxDepth, db);
+    const children = await get_tree_traverse(data.id, currentDepth + 1, maxDepth, db);
     const node = {
       id: data.dir_id,
-      text: data.display_name,
-      hasChildren: children !== null ? true : false,
-      children: children,
-      expanded: true,
+      name: data.display_name,
+      load_on_demand: true,
     };
+    if (children) node.children = children;
     tree.push(node);
   }
   return tree;
 }
+function subtreeMerge(a,b){
+  if (!a.children) a.children = [];
+  const existing = a.children.find(item => item.id === b.id);
+  if (existing){
+    // 既に存在するノードはマージ
+    for (let c of b.children || []){
+      subtreeMerge(existing, c);
+    }
+  }else{
+    a.children.push(b);
+  }
+}
+function mergeTree(tree){
+  const merged = [];
+  const map = {};
+  for(const t of tree){
+    if (!map[t.id]){
+      map[t.id] = t;
+      merged.push(t);
+    }else{
+      for (let c of t.children || []){
+        subtreeMerge(map[t.id], c);
+      }
+    }
+  }
 
-async function get_tree_retraverse(id, db) {
+  return merged;
+}
+
+async function get_tree_retraverse(id, dir_id, display_name, db) {
   // check child
   const chkchild = await db.select('parent_id')
                             .from('dirtree')
                             .where('parent_id', id)
                             .limit(1);
-  let tree = null;
+  let tree = {
+    id: dir_id,
+    name: display_name,
+    load_on_demand: false,
+  };
   let parentId = id;
   while(parentId !== -1){
     const parent = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
@@ -55,19 +87,15 @@ async function get_tree_retraverse(id, db) {
       // 見つかった
       const newtree = {
         id: parent[0].dir_id,
-        text: parent[0].display_name,
-        hasChildren: tree !== null ? true : false,
-        children: tree,
-        expanded: true,
+        name: parent[0].display_name,
+        load_on_demand: false,
       };
+      if (tree) newtree.children = [tree];
       tree = newtree;
       parentId = parent[0].id;
     }
   }
-  return {
-    hasChildren: chkchild.length > 0 ? true : false,
-    tree: tree,
-  };
+  return tree;
 }
 
 async function get_tree(root, keyword, currentDepth, maxDepth, db) {
@@ -79,7 +107,7 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
     }else{
       const rootData = await db.select(
         'dirs.id','dirs.dir_id','dirs.display_name'
-      ).from('dirs').where({'dir_id': root}).first();
+      ).from('dirs').where({'dir_id': root}).limit(1);
       if (rootData.length === 0) {
         return [];
       }
@@ -95,11 +123,10 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
       const children = await get_tree_traverse(data.id, currentDepth + 1, maxDepth, db);
       const node = {
         id: data.dir_id,
-        text: data.display_name,
-        hasChildren: children !== null ? true : false,
-        children: children,
-        expanded: true,
+        name: data.display_name,
+        load_on_demand: true,
       };
+      if (children) node.children = children;
       tree.push(node);
     }
   }else{
@@ -113,17 +140,11 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
     if (tagrets.length === 0) {
       return [];
     }
+    let mtree=[]
     for (const target of tagrets) {
-      const childData = await get_tree_retraverse(target.id, db);
-      const node = {
-        id: target.dir_id,
-        text: target.display_name,
-        hasChildren: childData.hasChildren,
-        children: childData.tree,
-        expanded: true,
-      };
-      tree.push(node);
+      mtree.push(await get_tree_retraverse(target.id,target.dir_id,target.display_name, db));
     }
+    tree.push(...mergeTree(mtree));
   }
   return tree;
 }
@@ -131,15 +152,15 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
 export default async function tree(app, main, api, subdir, moduleName, settings) {
   // ツリー構造取得処理
   api.get('/contents/tree', async (req, res) => {
-    let root = req.query.root || 'source';
+    let root = req.query.node || '';
     const keyword = req.query.keyword || '';
-    if (root === 'source') {
+    if (root === '') {
       root = null;
     }
     let tree = null;
     if (keyword === ''){
       tree = await database.transaction(async (tx) => {
-        return await get_tree(root, keyword, 1, 2, tx);
+        return await get_tree(root, keyword, 1, 3, tx);
       });
     }else{
       tree = await database.transaction(async (tx) => {

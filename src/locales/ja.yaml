@@ -35,6 +35,7 @@ page:
     tree:
       search: Tree検索
       searchButton: 実行
+      searchWord: "検索ワード"
 
 views:
   navigator:
