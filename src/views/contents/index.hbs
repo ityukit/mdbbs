@@ -44,11 +44,90 @@
       });
     }
   }
+
+  var tagCloudObject = null;
+  function clickTagCloud(e){
+    if (e.target.className === 'tagcloud--item') {
+      const tagId = e.target.getAttribute('data-tag-id');
+      console.log(tagId);
+    }
+  }
+  function loadTagCloud(){
+    const selected = $('#tree').tree('getSelectedNode');
+    const selectedId = selected ? selected.id : '';
+    $.ajax({
+      url: "{{baseUrl}}/api/contents/tagcloud?treeId=" + encodeURIComponent(selectedId),
+      method: "GET",
+      success: (data) => {
+        if (tagCloudObject) {
+          tagCloudObject.destroy();
+          tagCloudObject = null;
+        }
+        if (data.length === 0) {
+          $("#tagcloud").addClass("d-none");
+          $("#noTags").removeClass("d-none");
+          return;
+        } else {
+          $("#tagcloud").removeClass("d-none");
+          $("#noTags").addClass("d-none");
+        }
+        let tagSizeMax = 1;
+        for (const tag of data) {
+          if (tag.count > tagSizeMax) {
+            tagSizeMax = tag.count;
+          }
+        }
+        var tagSize = function(count){
+          return Math.ceil((count-1) / tagSizeMax * 52) + 12;
+        }
+        const items = [];
+        for (const tag of data) {
+          const tagItem = $("<span>").addClass("tagcloud--item").attr('data-tag-id', tag.tag_id).text(tag.display_name);
+          tagItem.css("font-size", tagSize(tag.count) + "px");
+          items.push(tagItem[0].outerHTML);
+        }
+        tagCloudObject = TagCloud('#tagcloud', items, {
+          radius: 50,
+          maxSpeed: 'normal',
+          initSpeed: 'normal',
+          direction: 135,
+          keep: true,
+          useContainerInlineStyles: true,
+          useItemInlineStyles: true,
+          containerClass: 'tagcloud',
+          itemClass: 'tagcloud--item',
+          useHTML: true
+       });
+      }
+    });
+  }
+
+  addEventListener("load", (event) => {
+    $("#tree").on(
+      'tree.select',
+      function(event) {
+        loadTagCloud();
+      }
+    );
+    $("#tree").on(
+      'tree.init',
+      function() {
+        loadTagCloud();
+      }
+    );
+    $("#tagcloud")[0].addEventListener("click", clickTagCloud);
+  });
 </script>
 
 <div class="container-fluid">
   <div class="row">
-    <div class="col-md-3 leftmenu">
+    <div class="col-md-2 leftmenu">
+      <div class="row">
+        <div class="col align-items-center">
+          <div id="tagcloud" class="tagcloud"></div> 
+          <div id="noTags" class="d-none">{{ __ "page.contents.tagCloud.noTags" }}</div>
+        </div>
+      </div>
       <div id="treeviewArea">
         <div class="input-group">
           <input type="text" id="treeKeyword" class="form-control form-control-sm" placeholder="{{ __ 'page.contents.tree.search' }}" aria-label="Search" aria-describedby="button-addon2" onkeyup="if($('#treeKeyword').val() === '' || event.key === 'Enter'){ searchTree(); }">
@@ -60,7 +139,7 @@
         <div id="tree" data-url="{{baseUrl}}/api/contents/tree"></div>
       </div>
     </div>
-    <div class="col-md-9">
+    <div class="col-md-10">
       {{#if false}}
       <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
         <ol class="breadcrumb">

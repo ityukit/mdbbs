@@ -29,3 +29,16 @@ header {
 	border-right: 1px solid #eee;
 }
 
+.tagcloud--item:hover {
+    background-color: rgba(0, 0, 0, .1);
+    border: 1px solid #333;
+}
+
+.light .tagcloud--item {
+    color: #fff;
+}
+
+.light .tagcloud--item:hover {
+    background-color: rgba(255, 255, 255, .1);
+    border: 1px solid #fff;
+}
