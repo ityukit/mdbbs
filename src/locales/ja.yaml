@@ -38,6 +38,8 @@ page:
       searchWord: "検索ワード"
     tagCloud:
       noTags: "タグが見つかりませんでした"
+    breadcrumb:
+      root: "(すべて)"
 
 views:
   navigator:

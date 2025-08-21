@@ -101,18 +101,41 @@
       }
     });
   }
+  function makeBreadcrumb(){
+    const breadcrumbList = $("#breadcrumbList");
+    breadcrumbList.empty();
+    let selectedNode = $('#tree').tree('getSelectedNode');
+    const ary = [];
+    if (selectedNode) {
+      do{
+        const item = $("<li>").addClass("breadcrumb-item").html(
+          `<a href="#" onclick="$('#tree').tree('selectNode', $('#tree').tree('getNodeById', '${selectedNode.id}'));">${selectedNode.name}</a>`
+        );
+        ary.unshift(item);
+        selectedNode = selectedNode.parent;
+      }while(selectedNode.parent);
+      ary[ary.length - 1].addClass("active");
+      ary[ary.length - 1].text(ary[ary.length - 1].text());
+    }else{
+      const item = $("<li>").addClass("breadcrumb-item active").text("{{ __ "page.contents.breadcrumb.root" }}");
+      ary.push(item);
+    }
+    breadcrumbList.append(ary);
+  }
 
   addEventListener("load", (event) => {
     $("#tree").on(
       'tree.select',
       function(event) {
         loadTagCloud();
+        makeBreadcrumb();
       }
     );
     $("#tree").on(
       'tree.init',
       function() {
         loadTagCloud();
+        makeBreadcrumb();
       }
     );
     $("#tagcloud")[0].addEventListener("click", clickTagCloud);
@@ -147,6 +170,10 @@
         </ol>
       </nav>
       {{/if}}
+      <nav id="breadcrumb" aria-label="breadcrumb">
+        <ol id="breadcrumbList" class="breadcrumb">
+        </ol>
+      </nav>
       <section id="main_section">
         <div id="contentArea">
           <!-- Content will be loaded here -->
