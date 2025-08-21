@@ -102,13 +102,17 @@
           $("#noTags").addClass("d-none");
         }
         let tagSizeMax = 1;
+        let tagSizeMin = 1;
         for (const tag of data) {
           if (tag.count > tagSizeMax) {
             tagSizeMax = tag.count;
           }
+          if (tag.count < tagSizeMin) {
+            tagSizeMin = tag.count;
+          }
         }
         var tagSize = function(count){
-          return Math.ceil((count-1) / tagSizeMax * 52) + 12;
+          return Math.ceil((count-tagSizeMin) / (tagSizeMax-tagSizeMin+1) * 52) + 12;
         }
         const items = [];
         for (const tag of data) {
