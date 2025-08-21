@@ -45,13 +45,36 @@
     }
   }
 
+  var tagData = {};
   var tagCloudObject = null;
+  var selectedTags = localStorage.getItem('contents-tag-dashboard') ? JSON.parse(localStorage.getItem('contents-tag-dashboard')) : {};
+  function clickTag(tagId){
+    delete selectedTags[tagId];
+    localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
+    $(`#tags span[data-tag-id="${tagId}"]`).remove();
+  }
+  function addTag(tag){
+    $("#tags").append(
+      `<span class="badge text-bg-light" data-tag-id="${tag.id}" onclick="clickTag('${tag.id}')">${tag.name}</span> `
+    );
+  }
   function clickTagCloud(e){
     if (e.target.className === 'tagcloud--item') {
       const tagId = e.target.getAttribute('data-tag-id');
-      console.log(tagId);
+      if (selectedTags[tagId]) {
+        // remove
+        delete selectedTags[tagId];
+        $(`#tags span[data-tag-id="${tagId}"]`).remove();
+      } else {
+        // add
+        const tag = tagData[tagId];
+        addTag(tag);
+        selectedTags[tagId] = tag;
+      }
+      localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
     }
   }
+  let lastTreeId = null;
   function loadTagCloud(){
     const selected = $('#tree').tree('getSelectedNode');
     const selectedId = selected ? selected.id : '';
@@ -63,6 +86,13 @@
           tagCloudObject.destroy();
           tagCloudObject = null;
         }
+        if (lastTreeId !== null && lastTreeId !== selectedId) {
+          $(`#tags span`).remove();
+          selectedTags = {};
+          localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
+        }
+        lastTreeId = selectedId;
+        tagData = {};
         if (data.length === 0) {
           $("#tagcloud").addClass("d-none");
           $("#noTags").removeClass("d-none");
@@ -85,6 +115,14 @@
           const tagItem = $("<span>").addClass("tagcloud--item").attr('data-tag-id', tag.tag_id).text(tag.display_name);
           tagItem.css("font-size", tagSize(tag.count) + "px");
           items.push(tagItem[0].outerHTML);
+          tagData[tag.tag_id] = {
+            id: tag.tag_id,
+            name: tag.display_name,
+            count: tag.count
+          };
+          if (selectedTags[tag.tag_id]) {
+            addTag(tagData[tag.tag_id]);
+          }
         }
         tagCloudObject = TagCloud('#tagcloud', items, {
           radius: 50,
@@ -170,10 +208,18 @@
         </ol>
       </nav>
       {{/if}}
-      <nav id="breadcrumb" aria-label="breadcrumb">
-        <ol id="breadcrumbList" class="breadcrumb">
-        </ol>
-      </nav>
+      <div class="row">
+        <div class="col-md-6">
+          <nav id="breadcrumb" aria-label="breadcrumb">
+            <ol id="breadcrumbList" class="breadcrumb">
+            </ol>
+          </nav>
+        </div>
+        <div class="col-md-6 text-end">
+          <div id="tags">
+
+          </div>
+      </div>
       <section id="main_section">
         <div id="contentArea">
           <!-- Content will be loaded here -->
