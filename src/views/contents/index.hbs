@@ -2,19 +2,42 @@
 {{> topNavigator }}
 
 <script>
-  addEventListener("load", (event) => {
-    const icon1 = document.createElement("i");
-    icon1.classList.add("material-icons");
-    icon1.textContent = "chevron_right";
-    const icon2 = document.createElement("i");
-    icon2.classList.add("material-icons");
-    icon2.textContent = "expand_more";
-    $('#tree').tree({
-      closedIcon: icon1,
-      openedIcon: icon2,
-      saveState: 'contents-tree-dashboard'
-    });
-  });
+  function replaceUrl(){
+    const treeString = $('#treeKeyword').val();
+    const treeid = $('#tree').tree('getSelectedNode') ? $('#tree').tree('getSelectedNode').id : '';
+    const tagsids = [];//Object.keys(localStorage.getItem('contents-tag-dashboard') ? JSON.parse(localStorage.getItem('contents-tag-dashboard')) : {});
+    for(const tag of $("#tags span[data-tag-id]")) {
+      tagsids.push(tag.getAttribute('data-tag-id'));
+    }
+    const tagsid = tagsids.map(id => encodeURIComponent(id)).join('+');
+    history.pushState(null, null, 
+      "?treeKeyword=" + encodeURIComponent(treeString)
+       + "&treeId=" + encodeURIComponent(treeid)
+       + "&tagsId=" + encodeURIComponent(tagsid));
+  }
+  function loadFromUrl(){
+    const urlParams = new URLSearchParams(window.location.search);
+    const treeKeyword = urlParams.get('treeKeyword');
+    const treeId = urlParams.get('treeId');
+    const tagsId = urlParams.get('tagsId');
+
+    if (treeKeyword) {
+      $('#treeKeyword').val(treeKeyword);
+    }
+    if (treeId) {
+      const node = $('#tree').tree('getNodeById', treeId);
+      const selected = $('#tree').tree('getSelectedNode');
+      if (node && node !== selected) {
+        $('#tree').tree('selectNode', node);
+      }
+    }
+    if (tagsId) {
+      const tags = tagsId.split('+').map(id => decodeURIComponent(id));
+      for (const tag of tags) {
+        addTag(tagData[tag]);
+      }
+    }
+  }
   function getAllNodes(data) {
     const ret = [];
     for(const dat of data) {
@@ -31,6 +54,7 @@
       $('#tree').tree('loadDataFromUrl', "{{baseUrl}}/api/contents/tree");
       $('#currentTreeKeywordText').text('');
       $('#currentTreeKeyword').addClass('d-none');
+      replaceUrl();
     } else {
       $('#tree').tree('loadDataFromUrl', "{{baseUrl}}/api/contents/tree?keyword=" + encodeURIComponent(keyword),null, ()=>{
         const data = $('#tree').tree('getTree').getData(true);
@@ -41,19 +65,24 @@
         }
         $('#currentTreeKeywordText').text(keyword);
         $('#currentTreeKeyword').removeClass('d-none');
+        replaceUrl();
       });
     }
   }
 
   var tagData = {};
   var tagCloudObject = null;
-  var selectedTags = localStorage.getItem('contents-tag-dashboard') ? JSON.parse(localStorage.getItem('contents-tag-dashboard')) : {};
+  var selectedTags = {}; //localStorage.getItem('contents-tag-dashboard') ? JSON.parse(localStorage.getItem('contents-tag-dashboard')) : {};
   function clickTag(tagId){
     delete selectedTags[tagId];
-    localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
+    //localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
     $(`#tags span[data-tag-id="${tagId}"]`).remove();
+    replaceUrl();
   }
   function addTag(tag){
+    if (!tag || !tag.id || !tag.name) {
+      return;
+    }
     $("#tags").append(
       `<span class="badge text-bg-light" data-tag-id="${tag.id}" onclick="clickTag('${tag.id}')">${tag.name}</span> `
     );
@@ -71,75 +100,82 @@
         addTag(tag);
         selectedTags[tagId] = tag;
       }
-      localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
+      //localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
+      replaceUrl();
     }
   }
   let lastTreeId = null;
-  function loadTagCloud(){
+  function loadTagCloud(startup){
     const selected = $('#tree').tree('getSelectedNode');
     const selectedId = selected ? selected.id : '';
     $.ajax({
       url: "{{baseUrl}}/api/contents/tagcloud?treeId=" + encodeURIComponent(selectedId),
       method: "GET",
       success: (data) => {
-        if (tagCloudObject) {
-          tagCloudObject.destroy();
+        if (tagCloudObject){
+          $("#tagcloud").empty();
           tagCloudObject = null;
         }
         if (lastTreeId !== null && lastTreeId !== selectedId) {
           $(`#tags span`).remove();
           selectedTags = {};
-          localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
+          //localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
         }
         lastTreeId = selectedId;
         tagData = {};
         if (data.length === 0) {
           $("#tagcloud").addClass("d-none");
           $("#noTags").removeClass("d-none");
-          return;
         } else {
           $("#tagcloud").removeClass("d-none");
           $("#noTags").addClass("d-none");
-        }
-        let tagSizeMax = 1;
-        let tagSizeMin = 1;
-        for (const tag of data) {
-          if (tag.count > tagSizeMax) {
-            tagSizeMax = tag.count;
+          let tagSizeMax = 1;
+          let tagSizeMin = 1;
+          for (const tag of data) {
+            if (tag.count > tagSizeMax) {
+              tagSizeMax = tag.count;
+            }
+            if (tag.count < tagSizeMin) {
+              tagSizeMin = tag.count;
+            }
           }
-          if (tag.count < tagSizeMin) {
-            tagSizeMin = tag.count;
+          var tagSize = function(count){
+            return Math.ceil((count-tagSizeMin) / (tagSizeMax-tagSizeMin+1) * 52) + 12;
           }
-        }
-        var tagSize = function(count){
-          return Math.ceil((count-tagSizeMin) / (tagSizeMax-tagSizeMin+1) * 52) + 12;
-        }
-        const items = [];
-        for (const tag of data) {
-          const tagItem = $("<span>").addClass("tagcloud--item").attr('data-tag-id', tag.tag_id).text(tag.display_name);
-          tagItem.css("font-size", tagSize(tag.count) + "px");
-          items.push(tagItem[0].outerHTML);
-          tagData[tag.tag_id] = {
-            id: tag.tag_id,
-            name: tag.display_name,
-            count: tag.count
-          };
-          if (selectedTags[tag.tag_id]) {
-            addTag(tagData[tag.tag_id]);
+          const items = [];
+          for (const tag of data) {
+            const tagItem = $("<span>").addClass("tagcloud--item").attr('data-tag-id', tag.tag_id).text(tag.display_name);
+            tagItem.css("font-size", tagSize(tag.count) + "px");
+            items.push(tagItem[0].outerHTML);
+            tagData[tag.tag_id] = {
+              id: tag.tag_id,
+              name: tag.display_name,
+              count: tag.count
+            };
+            if (selectedTags[tag.tag_id]) {
+              addTag(tagData[tag.tag_id]);
+            }
           }
+          tagCloudObject = TagCloud('#tagcloud', items, {
+            radius: 50,
+            maxSpeed: 'normal',
+            initSpeed: 'normal',
+            direction: 135,
+            keep: true,
+            useContainerInlineStyles: true,
+            useItemInlineStyles: true,
+            containerClass: 'tagcloud',
+            itemClass: 'tagcloud--item',
+            useHTML: true
+          });
         }
-        tagCloudObject = TagCloud('#tagcloud', items, {
-          radius: 50,
-          maxSpeed: 'normal',
-          initSpeed: 'normal',
-          direction: 135,
-          keep: true,
-          useContainerInlineStyles: true,
-          useItemInlineStyles: true,
-          containerClass: 'tagcloud',
-          itemClass: 'tagcloud--item',
-          useHTML: true
-       });
+        if (startup){
+          loadFromUrl();
+          makeBreadcrumb();
+        }else{
+          makeBreadcrumb();
+          replaceUrl();
+        }
       }
     });
   }
@@ -166,18 +202,28 @@
   }
 
   addEventListener("load", (event) => {
+    const icon1 = document.createElement("i");
+    icon1.classList.add("material-icons");
+    icon1.textContent = "chevron_right";
+    const icon2 = document.createElement("i");
+    icon2.classList.add("material-icons");
+    icon2.textContent = "expand_more";
+    $('#tree').tree({
+      closedIcon: icon1,
+      openedIcon: icon2,
+      saveState: 'contents-tree-dashboard',
+      showEmptyFolder: true
+    }); 
     $("#tree").on(
       'tree.select',
       function(event) {
-        loadTagCloud();
-        makeBreadcrumb();
+        loadTagCloud(false);
       }
     );
     $("#tree").on(
       'tree.init',
       function() {
-        loadTagCloud();
-        makeBreadcrumb();
+        loadTagCloud(true);
       }
     );
     $("#tagcloud")[0].addEventListener("click", clickTagCloud);
