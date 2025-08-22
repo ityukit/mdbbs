@@ -44,16 +44,28 @@
       $('#treeKeyword').val(treeKeyword);
     }
     if (treeId) {
-      const node = $('#tree').tree('getNodeById', treeId);
-      if (node){
-        await openFullNode(node);
-        const selected = $('#tree').tree('getSelectedNode');
-        console.log("Selected node:", selected);
-        if (node && selected.id !== node.id) {
-          $('#tree').tree('selectNode', node);
-          console.log("Selected node:", node.id);
+      const state = JSON.parse(localStorage.getItem('contents-tree-dashboard'));
+      console.log(state)
+      if (state){
+        if (state.selected_node[0] !== treeId) {
+          state.selected_node = [treeId];
         }
+        if (state.open_nodes.filter(id => id === treeId).length === 0) {
+          state.open_nodes.push(treeId);
+        }
+        console.log("Updating state:", state);
+        localStorage.setItem('contents-tree-dashboard', JSON.stringify(state));
       }
+      //const node = $('#tree').tree('getNodeById', treeId);
+      //if (node){
+      //  await openFullNode(node);
+      //  const selected = $('#tree').tree('getSelectedNode');
+      //  console.log("Selected node:", selected);
+      //  if (node && selected.id !== node.id) {
+      //    $('#tree').tree('selectNode', node);
+      //    console.log("Selected node:", node.id);
+      //  }
+      //}
       $('#tree').tree('refresh');
     }
     if (tagsId) {
