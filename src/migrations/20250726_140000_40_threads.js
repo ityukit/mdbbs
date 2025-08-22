@@ -1,6 +1,7 @@
 export function up(knex) {
   return knex.schema.createTable('threads', function createTable(table) {
     table.bigIncrements('id').primary();
+    table.text('thread_id').notNullable().unique();
     table.text('title').notNullable();
 
     table.bigInteger('dirtree_id').notNullable();

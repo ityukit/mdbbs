@@ -22,7 +22,7 @@ export default async function express_api(app, main, settings) {
     res.redirect(settings.config.app.urlBase + '/auth/login');
   });
 
-  dynamicLoader('./src/routes/api', async (subdir,moduleName,module) => {
+  await dynamicLoader('./src/routes/api', async (subdir,moduleName,module) => {
     const def = await module.default(app, main, api, subdir, moduleName, settings);
     if (def) api.use(def);
   });

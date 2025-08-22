@@ -17,7 +17,7 @@ export default async function express_meta(app, main, settings) {
     res.redirect(settings.config.app.urlBase + '/auth/login');
   });
 
-  dynamicLoader('./src/routes/meta', async (subdir,moduleName,module) => {
+  await dynamicLoader('./src/routes/meta', async (subdir,moduleName,module) => {
     const def = await module.default(app, main, meta, subdir, moduleName, settings);
     if (def) meta.use(def);
   });

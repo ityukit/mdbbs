@@ -17,7 +17,7 @@ export default async function express_account(app, main, settings) {
     res.redirect(settings.config.app.urlBase + '/auth/login');
   });
 
-  dynamicLoader('./src/routes/account', async (subdir,moduleName,module) => {
+  await dynamicLoader('./src/routes/account', async (subdir,moduleName,module) => {
     const def = await module.default(app, main, account, subdir, moduleName, settings);
     if (def) account.use(def);
   });

@@ -198,7 +198,7 @@ process.on('SIGTERM', () => {
   }
   server.close(() => {
     // シャットダウン時の処理を実装する
-    database.close();
+    database.destroy();
     logger.info('SIGTERM signal received.');
   });
 });

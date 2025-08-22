@@ -17,7 +17,7 @@ export default async function express_contents(app, main, settings) {
     res.redirect(settings.config.app.urlBase + '/auth/login');
   });
 
-  dynamicLoader('./src/routes/contents', async (subdir,moduleName,module) => {
+  await dynamicLoader('./src/routes/contents', async (subdir,moduleName,module) => {
     const def = await module.default(app, main, contents, subdir, moduleName, settings);
     if (def) contents.use(def);
   });

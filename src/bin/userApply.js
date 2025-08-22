@@ -1,4 +1,3 @@
-import { name } from 'ejs';
 import database from '../database.js';
 import pHash from '../lib/phash.js';
 
@@ -8,7 +7,6 @@ const settings = init.getSettings();
 
 // `node:util`モジュールを、utilオブジェクトとしてインポートする
 import * as util from "node:util";
-import login from '../routes/api/auth/login.js';
 
 // コマンドライン引数をparseArgs関数でパースする
 const {

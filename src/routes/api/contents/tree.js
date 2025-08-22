@@ -18,7 +18,7 @@ async function get_tree_traverse(id, currentDepth, maxDepth, db) {
   }
   for (const data of await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
                             .from('dirs')
-                            .leftJoin('dirtree', 'dirtree.child_id', 'dirs.id')
+                            .join('dirtree', 'dirtree.child_id','=', 'dirs.id')
                             .where('dirtree.parent_id', id)
                             .orderBy('dirs.display_name')){
     const children = await get_tree_traverse(data.id, currentDepth + 1, maxDepth, db);
@@ -76,7 +76,7 @@ async function get_tree_retraverse(id, dir_id, display_name, db) {
   while(parentId !== -1){
     const parent = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
                             .from('dirs')
-                            .leftJoin('dirtree', 'dirtree.parent_id', 'dirs.id')
+                            .join('dirtree', 'dirtree.parent_id','=', 'dirs.id')
                             .where('dirtree.child_id', parentId)
                             .orderBy('dirs.display_name').limit(1);
   
@@ -117,7 +117,7 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
                                 'dirs.id','dirs.dir_id','dirs.display_name'
                               )
                             .from('dirs')
-                            .leftJoin('dirtree', 'dirs.id', 'dirtree.child_id')
+                            .join('dirtree', 'dirs.id','=', 'dirtree.child_id')
                             .where({'dirtree.parent_id': start_parentId})
                             .orderBy('dirs.display_name')) {
       const children = await get_tree_traverse(data.id, currentDepth + 1, maxDepth, db);
@@ -134,7 +134,7 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
     // 指定の子ノードを検索
     const tagrets = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
                       .from('dirs')
-                      .leftJoin('dirtree', 'dirtree.child_id', 'dirs.id')
+                      .join('dirtree', 'dirtree.child_id','=', 'dirs.id')
                       .where('dirs.display_name', 'like', `%${keyword}%`)
                       .orderBy('dirs.display_name');
     if (tagrets.length === 0) {
@@ -153,6 +153,9 @@ export default async function tree(app, main, api, subdir, moduleName, settings)
   // ツリー構造取得処理
   api.get('/contents/tree', async (req, res) => {
     let root = req.query.node || '';
+    //if (req.query.selected_node) {
+    //  root = req.query.selected_node;
+    //}
     const keyword = req.query.keyword || '';
     if (root === '') {
       root = null;

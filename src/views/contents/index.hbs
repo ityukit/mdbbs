@@ -15,7 +15,26 @@
        + "&treeId=" + encodeURIComponent(treeid)
        + "&tagsId=" + encodeURIComponent(tagsid));
   }
-  function loadFromUrl(){
+  async function openFullNode(node) {
+    //console.log("openFullNode:", node);
+    if (node && node.name !== '') {
+      if (node.parent) {
+        await openFullNode(node.parent);
+      }
+      //console.log("Opening node:", node);
+      if (!node.is_open) {
+        //console.log("Opening node run:", node);
+        await new Promise((resolve) => {
+          //console.log("Opening node:", node);
+          $('#tree').tree('openNode', node, false, (node) => {
+            //console.log("Node opened:", node);
+            resolve();
+          });
+        });
+      }
+    }
+  }
+  async function loadFromUrl(){
     const urlParams = new URLSearchParams(window.location.search);
     const treeKeyword = urlParams.get('treeKeyword');
     const treeId = urlParams.get('treeId');
@@ -26,10 +45,16 @@
     }
     if (treeId) {
       const node = $('#tree').tree('getNodeById', treeId);
-      const selected = $('#tree').tree('getSelectedNode');
-      if (node && node !== selected) {
-        $('#tree').tree('selectNode', node);
+      if (node){
+        await openFullNode(node);
+        const selected = $('#tree').tree('getSelectedNode');
+        console.log("Selected node:", selected);
+        if (node && selected.id !== node.id) {
+          $('#tree').tree('selectNode', node);
+          console.log("Selected node:", node.id);
+        }
       }
+      $('#tree').tree('refresh');
     }
     if (tagsId) {
       const tags = tagsId.split('+').map(id => decodeURIComponent(id));
@@ -37,6 +62,7 @@
         addTag(tagData[tag]);
       }
     }
+    loadTagCloud(false);
   }
   function getAllNodes(data) {
     const ret = [];
@@ -111,7 +137,7 @@
     $.ajax({
       url: "{{baseUrl}}/api/contents/tagcloud?treeId=" + encodeURIComponent(selectedId),
       method: "GET",
-      success: (data) => {
+      success: async (data) => {
         if (tagCloudObject){
           $("#tagcloud").empty();
           tagCloudObject = null;
@@ -140,7 +166,7 @@
             }
           }
           var tagSize = function(count){
-            return Math.ceil((count-tagSizeMin) / (tagSizeMax-tagSizeMin+1) * 52) + 12;
+            return Math.ceil((count-tagSizeMin) / (tagSizeMax-tagSizeMin+1) * 20) + 12;
           }
           const items = [];
           for (const tag of data) {
@@ -170,7 +196,7 @@
           });
         }
         if (startup){
-          loadFromUrl();
+          await loadFromUrl();
           makeBreadcrumb();
         }else{
           makeBreadcrumb();
@@ -259,16 +285,13 @@
       </nav>
       {{/if}}
       <div class="row">
-        <div class="col-md-6">
-          <nav id="breadcrumb" aria-label="breadcrumb">
-            <ol id="breadcrumbList" class="breadcrumb">
-            </ol>
-          </nav>
-        </div>
-        <div class="col-md-6 text-end">
-          <div id="tags">
-
-          </div>
+        <nav id="breadcrumb" aria-label="breadcrumb">
+          <ol id="breadcrumbList" class="breadcrumb">
+          </ol>
+        </nav>
+      </div>
+      <div class="row text-end">
+          <div id="tags"></div>
       </div>
       <section id="main_section">
         <div id="contentArea">
