@@ -1,5 +1,8 @@
 import cache from '../cache.js'
 import database from '../database.js'
+import init from '../init.js';
+
+const settings = init.getSettings();
 
 class CacheUser{
   constructor(){
@@ -15,12 +18,34 @@ class CacheUser{
     if (this.initialized) return;
     this.initialized = true;
   }
+  _convertDate(d){
+    if (d instanceof Date) return d;
+    return settings.datetool.parse(d.toString());
+  }
+  _convertUserJsonToData(d){
+    const j = JSON.parse(d);
+    return {
+      id: j.id,
+      login_id: j.login_id,
+      display_name: j.display_name,
+      email: j.email,
+      description: j.description,
+      visibled: j.visibled,
+      enabled: j.enabled,
+      locked: j.locked,
+      activated: j.activated,
+      verified_email: j.verified_email,
+      created_at: this._convertDate(j.created_at),
+      updated_at: this._convertDate(j.updated_at),
+      __expires: j.__expires,
+    };
+  }
   async getUserById(id, db_trx){
     const cachedUser = await this.cache.run(async (client) =>{
       return await client.get(`user:${id}`);
     })
     if (cachedUser){
-      const user = JSON.parse(cachedUser);
+      const user = this._convertUserJsonToData(cachedUser);
       if (user.__expires > Date.now()) return user;
     }
     if (!db_trx) db_trx = await this.database;
@@ -49,14 +74,15 @@ class CacheUser{
       locked: dbuser.locked,
       activated: dbuser.activated,
       verified_email: dbuser.verified_email,
-      created_at: dbuser.created_at,
-      updated_at: dbuser.updated_at,
+      created_at: this._convertDate(dbuser.created_at),
+      updated_at: this._convertDate(dbuser.updated_at),
       __expires: Date.now() + 10 * 60 * 1000 // cache for 10 minutes
     }
+    const ud = JSON.stringify(user)
     await this.cache.run(async (client) =>{
-      await client.set(`user:${id}`, JSON.stringify(user));
+      await client.set(`user:${id}`, ud);
     })
-    return user;
+    return this._convertUserJsonToData(ud);
   }
 }
 

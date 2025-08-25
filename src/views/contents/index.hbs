@@ -2,7 +2,101 @@
 {{> topNavigator }}
 
 <script>
-  let debugdata = null;
+  function escape_html (string) {
+    if(typeof string !== 'string') {
+      return string;
+    }
+    return string.replace(/[&'`"<>]/g, function(match) {
+      return {
+        '&': '&amp;',
+        "'": '&#x27;',
+        '`': '&#x60;',
+        '"': '&quot;',
+        '<': '&lt;',
+        '>': '&gt;',
+      }[match]
+    });
+  }
+  function generateUserTooltip(user){
+    const email = user.email ? escape_html(user.email) + '<br>' : '';
+    const description = user.description ? escape_html(user.description) : '';
+    return `
+        ${escape_html(user.display_name)}<br>
+        created: ${escape_html(user.created_at_str)}<br>
+        ${email}
+        ${description}
+    `;
+  }
+  function generateContentOnce(data) {
+      const breadcrumb = [];
+      for(let i=0;i<data.contents.dir_ids.length;i++){
+        const dirId = data.contents.dir_ids[i];
+        const dirName = data.contents.dir_names[i];
+        const item = $("<li>").addClass("breadcrumb-item active").html(
+          `${escape_html(dirName)}`
+        );
+        breadcrumb.push(item);
+      }
+      const item = $("<li>").addClass("breadcrumb-item active").html(
+        `{{ __ "page.contents.breadcrumb.dashboard" }}`
+      );
+      breadcrumb.unshift(item);
+      const tags = [];
+      for (let i=0;i<data.contents.tag_ids.length;i++){
+        const tagId = data.contents.tag_ids[i];
+        const tagName = data.contents.tag_names[i];
+        const tagItem = $("<span>").addClass("badge text-bg-light").attr('data-tag-id', tagId).text(tagName);
+        tags.push(tagItem);
+      }
+      const contents = $('<div>').html(data.contents.contents);
+      const contentsSample = contents.text().substring(0, 200);
+      return `
+          <div class="container border rounded shadow">
+            <div class="row">
+              <div class="col-9 dfs-7">
+                <nav aria-label="breadcrumb">
+                  <ol class="breadcrumb">
+                    ${breadcrumb.map(item => item.prop('outerHTML')).join('')}
+                  </ol>
+                </nav>
+              </div>
+              <div class="col-3 dfs-7 text-end">
+                <div class="d-inline">
+                  ${tags.map(item => item.prop('outerHTML')).join('')}
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-1">
+                &nbsp;
+              </div>
+              <div class="col-9">
+                <h5><a class="contentsTitle" href="{{ baseUrl }}/contents/${data.id}">${escape_html(data.title)}</a></h5>
+              </div>
+              <div class="col-2 text-end">
+                <a class="userLink"
+                  href="{{ baseUrl }}/users/${data.contents.created_user.id}"
+                  data-bs-toggle="tooltip" data-bs-html="true"
+                  data-bs-title="${generateUserTooltip(data.contents.created_user)}"
+                  ><span class="dfs-7">${escape_html(data.contents.created_user.display_name)}</span></a><br>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-1">
+                &nbsp;
+              </div>
+              <div class="col-11">
+                <p>${contentsSample}</p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col text-end">
+                <p><span class="dfs-8">${escape_html(data.contents.updated_at_str)}</span></p>
+              </div>
+            </div>
+          </div>
+    `;
+  }
   function loadContents(){
     const urlParams = new URLSearchParams(window.location.search);
     const treeId = urlParams.get('treeId');
@@ -18,8 +112,14 @@
       },
       success: function(data) {
         // 成功時の処理
-        $('#contentArea').text(data);
-        debugdata = data;
+        $('#contentArea').empty();
+        for (const item of data) {
+          const contentHtml = generateContentOnce(item);
+          $('#contentArea').append(contentHtml);
+          $('#contentArea').append('<br>');
+        }
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
       },
       error: function(xhr, status, error) {
         // エラー時の処理

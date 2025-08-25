@@ -60,9 +60,9 @@ export default function setting(env, home, defaultconfig, config) {
       format : (date) => dateutil.format(date, "yyyy-MM-dd HH:mm:ss.SSSxxx"),
       distance : (date) => dateutil.formatDistanceToNow(date, {includeSeconds: true, locale: datelocale[i18n.getLocale()]}),
       parse: (dateString) => {
-        { const a = dateutil.parseISO(dateString); if (a instanceof Date && !isNaN(a)) return a; }
-        { const a = dateutil.parse(dateString); if (a instanceof Date && !isNaN(a)) return a; }
-        { const a = Date.parse(dateString); if (a instanceof Date && !isNaN(a)) return a; }
+        { const a = dateutil.parseISO(dateString); if (a instanceof Date && !isNaN(a.getTime())) return a; }
+        { const a = dateutil.parse(dateString); if (a instanceof Date && !isNaN(a.getTime())) return a; }
+        { const a = Date.parse(dateString); if (a instanceof Date && !isNaN(a.getTime())) return a; }
         return null;
       }
     },

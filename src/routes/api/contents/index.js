@@ -11,11 +11,12 @@ async function usermapping(uid,db){
   if (!user) return null;
   return {
     id: user.id,
-    login_id: user.login_id,
+    // login_id: user.login_id,
     display_name: user.display_name,
     email: user.email,
     description: user.description,
     created_at: user.created_at,
+    created_at_str: settings.datetool.format(new Date(user.created_at)),
   }
 }
 
@@ -42,8 +43,8 @@ async function get_index(node, tags, start, len, db) {
                   'contents.created_user_id',
                   'contents.updated_at',
                   'contents.created_at',
-                  database.raw('u_dir_ids(dirtree.parent_id) as dir_ids'),
-                  database.raw('u_dir_names(dirtree.parent_id) as dir_names'),
+                  database.raw('u_dir_ids(dirtree.child_id) as dir_ids'),
+                  database.raw('u_dir_names(dirtree.child_id) as dir_names'),
                   database.raw('u_tag_ids(threads.id) as tag_ids'),
                   database.raw('u_tag_names(threads.id) as tag_names')
                 )
@@ -114,7 +115,9 @@ async function get_index(node, tags, start, len, db) {
         updated_user: await usermapping(d.updated_user_id, db),
         created_user: await usermapping(d.created_user_id, db),
         updated_at: d.updated_at.toISOString(),
+        updated_at_str: settings.datetool.format(d.updated_at),
         created_at: d.created_at.toISOString(),
+        created_at_str: settings.datetool.format(d.created_at),
         dir_ids: d.dir_ids?d.dir_ids.split(' > '):[],
         dir_names: d.dir_names?d.dir_names.split(' > '):[],
         tag_ids: d.tag_ids?d.tag_ids.split(' > '):[],
