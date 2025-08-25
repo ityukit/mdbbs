@@ -5,7 +5,7 @@ import cache from '../../../cache.js';
 import init from '../../../init.js';
 
 const pHash = new phash(init.getSettings());
-const passwordNone = pHash.hashPassword('');
+const passwordNone = await pHash.hashPassword('');
 
 export default async function login(app, main, api, subdir, moduleName, settings) {
   // ログイン処理
