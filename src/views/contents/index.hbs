@@ -2,6 +2,32 @@
 {{> topNavigator }}
 
 <script>
+  let debugdata = null;
+  function loadContents(){
+    const urlParams = new URLSearchParams(window.location.search);
+    const treeId = urlParams.get('treeId');
+    const tagsId = urlParams.get('tagsId');
+    let tags = null;
+    if (tagsId) tags = tagsId.split('+').map(id => decodeURIComponent(id));
+    $('#contentArea').text("{{ __ 'page.contents.index.loading'}}");
+    $.ajax({
+      url: "{{baseUrl}}/api/contents/index",
+      data: {
+        node: treeId,
+        tags: tagsId
+      },
+      success: function(data) {
+        // 成功時の処理
+        $('#contentArea').text(data);
+        debugdata = data;
+      },
+      error: function(xhr, status, error) {
+        // エラー時の処理
+        $('#contentArea').text("{{ __ 'page.contents.index.loadError'}}");
+      }
+    });
+  }
+
   function replaceUrl(){
     const treeString = $('#treeKeyword').val();
     const treeid = $('#tree').tree('getSelectedNode') ? $('#tree').tree('getSelectedNode').id : '';
@@ -18,6 +44,7 @@
          + "&treeId=" + encodeURIComponent(treeid)
          + "&tagsId=" + encodeURIComponent(tagsid));
     }
+    loadContents();
   }
   async function openFullNode(node) {
     if (node && node.name !== '') {
@@ -64,6 +91,7 @@
       }
     }
     loadTagCloud(false);
+    loadContents();
   }
   function getAllNodes(data) {
     const ret = [];
@@ -303,7 +331,7 @@
       <section id="main_section">
         <div id="contentArea">
           <!-- Content will be loaded here -->
-          Contents
+          {{ __ 'page.contents.index.contentArea'}}
         </div>
       </section>
     </div>

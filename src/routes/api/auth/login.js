@@ -1,7 +1,7 @@
 import phash from '../../../lib/phash.js';
 import _ from 'lodash';
 import database from '../../../database.js';
-import cache from '../../../cache.js';
+import cacheUser from '../../../lib/cacheUser.js';
 import init from '../../../init.js';
 
 const pHash = new phash(init.getSettings());
@@ -19,7 +19,7 @@ export default async function login(app, main, api, subdir, moduleName, settings
     try {
       const pHash = new phash(settings);
       const user = await database.transaction(async (tx) => {
-        const user = await tx.select('id','login_id','hashed_password','display_name','enabled','locked').where({ login_id: username }).from('users').first();
+        const user = await tx.select('id','login_id','hashed_password','enabled','locked').where({ login_id: username }).from('users').first();
         if (!user || user.hashed_password === null) {
           // dummy run
           await pHash.verifyPassword('', passwordNone);
@@ -42,26 +42,16 @@ export default async function login(app, main, api, subdir, moduleName, settings
           return null;
         }
         // user login ok!
-        return user;
+        return await cacheUser.getUserById(user.id);
       });
       if (!user) {
         return;
       }
 
       // セッションにユーザー情報を保存
-      req.session.user = {
-        id: user.id,
-        loginId: user.login_id,
-        name: user.display_name,
-      };
-      // キャッシュにユーザー情報を保存
-      await cache.run(async (client)=>{
-        await client.set(`user:${user.id}`, JSON.stringify(_.cloneDeep(req.session.user)));
-      });
-
+      req.session.user = user;
       res.json({
         message: 'Login successful',
-        user: req.session.user,
         redirectTo: req.session.redirectTo || settings.config.app.urlBase,
       });
       req.session.redirectTo = null;

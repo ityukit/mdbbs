@@ -32,6 +32,10 @@ page:
       title: "ダッシュボード"
       description: "ダッシュボード,スタートページ"
       pageTitle: "ダッシュボード"
+      loading: "読み込み中..."
+      loadError: "読み込みに失敗しました"
+      contentArea: "コンテンツエリア"
+      noContent: "コンテンツが見つかりませんでした"
     tree:
       search: Tree検索
       searchButton: 実行

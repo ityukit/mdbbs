@@ -17,11 +17,11 @@ class Cache {
       } else {
         throw new Error(`Unsupported cache type: ${this.cacheType}`);
       }
+      this.initialized = false;
       Cache.instance = this;
     }
     return Cache.instance;
   }
-
   async run(callback) {
     return await this.cache.run(callback);
   }

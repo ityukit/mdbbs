@@ -150,11 +150,28 @@ for(let i=0;i<3;i++){
 
 // create threads
 let contents_index = 0;
-for(let i=0;i<50;i++){
+for(let i=0;i<20;i++){
   const id = (await database('threads').insert({
     thread_id: "thread" + (i+1),
     title: "スレッド" + (i+1),
     dirtree_id: data.dirs.filter(d => d.dir_id === 'dir3')[0].subdirs.filter(d => d.dir_id === 'subdir3-2')[0].subdirs.filter(d => d.dir_id === 'subdir3-2-1')[0].id,
+    contents_id: data.contents[contents_index].id,
+    status: 0,
+    updated_user_id: data.user_id,
+    created_user_id: data.user_id,
+    last_updated_user_id: data.user_id,
+  }).returning('id'))[0].id;
+  data.threads.push({
+    id,
+    thread_id: "thread" + (i+1)
+  });
+  contents_index++;
+}
+for(let i=20;i<50;i++){
+  const id = (await database('threads').insert({
+    thread_id: "thread" + (i+1),
+    title: "スレッド" + (i+1),
+    dirtree_id: data.dirs.filter(d => d.dir_id === 'dir3')[0].subdirs.filter(d => d.dir_id === 'subdir3-2')[0].id,
     contents_id: data.contents[contents_index].id,
     status: 0,
     updated_user_id: data.user_id,

@@ -1,10 +1,10 @@
-import unified from 'unified';
+import {unified} from 'unified';
 import markdown from 'remark-parse';
 import remark2rehype from 'remark-rehype'
 import html from 'rehype-stringify';
 
-import all from 'mdast-util-to-hast/lib/all';
-import u from 'unist-builder';
+import {toHast} from 'mdast-util-to-hast';
+import {u} from 'unist-builder';
 
 import init from '../../init.js';
 
@@ -49,22 +49,29 @@ function rubyHeader(h, node){
     'rt',
     [u('text', node.rubyText)],
   );
-  return h(node, 'ruby', [...all(h,node), rtNode]);
+  return h(node, 'ruby', toHast(h, node.children));
 }
 
 class ParserDefault{
   constructor(){
     if (!ParserDefault.instance) {
-      this.processor = unified()
+      this.processor = null;
+      this.initialized = false;
+      ParserDefault.instance = this;
+    }
+    return ParserDefault.instance;
+  }
+  async _init() {
+    if (!this.initialized) {
+      this.processor = await unified()
                         .use(markdown)
                         .use(rubyAttacher)
                         .use(remark2rehype, {
                           Headers: {ruby: rubyHeader}
-                        })
-                        .use(html);
-      ParserDefault.instance = this;
+                      })
+                      .use(html);
+      this.initialized = true;
     }
-    return ParserDefault.instance;
   }
   async parse(text) {
     return await this.processor.process(text);
@@ -72,4 +79,5 @@ class ParserDefault{
 }
 
 const instance = new ParserDefault();
+await instance._init();
 export default instance;
