@@ -10,40 +10,40 @@ class RedisClientWrapper {
     this.prefix = prefix;
   }
   async get(key) {
-    return this.client.get(this.prefix + key);
+    return await this.client.get(this.prefix + key);
   }
   async set(key, value) {
-    return this.client.set(this.prefix + key, value);
+    return await this.client.set(this.prefix + key, value);
   }
   async del(key) {
-    return this.client.del(this.prefix + key);
+    return await this.client.del(this.prefix + key);
   }
   async exists(key) {
-    return this.client.exists(this.prefix + key);
+    return await this.client.exists(this.prefix + key);
   }
   async keys(pattern) {
-    return this.client.keys(this.prefix + pattern);
+    return await this.client.keys(this.prefix + pattern);
   }
   async hgetall(key) {
-    return this.client.hGetAll(this.prefix + key);
+    return await this.client.hGetAll(this.prefix + key);
   }
   async hset(key, field, value) {
-    return this.client.hSet(this.prefix + key, field, value);
+    return await this.client.hSet(this.prefix + key, field, value);
   }
   async hdel(key, field) {
-    return this.client.hDel(this.prefix + key, field);
+    return await this.client.hDel(this.prefix + key, field);
   }
   async hget(key, field) {
-    return this.client.hGet(this.prefix + key, field);
+    return await this.client.hGet(this.prefix + key, field);
   }
   async hkeys(key) {
-    return this.client.hKeys(this.prefix + key);
+    return await this.client.hKeys(this.prefix + key);
   }
   async hvals(key) {
-    return this.client.hVals(this.prefix + key);
+    return await this.client.hVals(this.prefix + key);
   }
   async expire(key, seconds) {
-    return this.client.expire(this.prefix + key, seconds);
+    return await this.client.expire(this.prefix + key, seconds);
   }
 }
 

@@ -55,8 +55,8 @@ export default async function login(app, main, api, subdir, moduleName, settings
         name: user.display_name,
       };
       // キャッシュにユーザー情報を保存
-      await cache.run((client)=>{
-        client.set(`user:${user.id}`, _.cloneDeep(req.session.user));
+      await cache.run(async (client)=>{
+        await client.set(`user:${user.id}`, _.cloneDeep(req.session.user));
       });
 
       res.json({
