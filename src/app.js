@@ -51,6 +51,7 @@ app.use((err, req, res, next) => {
 main.use(express.json());
 main.use(express.urlencoded({ extended: true }));
 // session
+const redisstore = await (new redisCache(settings, __filename)).createNewClientInstance();
 main.use(
   session({
     secret: settings.config.session.secret,
@@ -72,7 +73,7 @@ main.use(
         });
       } else if (settings.config.session.type === 'redis') {
         return new sessionRedis.RedisStore({
-          client: (await (new redisCache(settings, __filename)).createNewClientInstance()),
+          client: redisstore,
           prefix: 'sess:',
           ttl: settings.config.session.maxAge, // in seconds
         });
