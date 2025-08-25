@@ -57,11 +57,10 @@ function mergeTree(tree){
       }
     }
   }
-
-  return merged;
+  return merged.sort((a, b) => (a.name > b.name) - (a.name < b.name));
 }
 
-async function get_tree_retraverse(id, dir_id, display_name, db) {
+async function get_tree_retraverse(id, dir_id, display_name, load_on_demand, db) {
   // check child
   const chkchild = await db.select('parent_id')
                             .from('dirtree')
@@ -70,8 +69,10 @@ async function get_tree_retraverse(id, dir_id, display_name, db) {
   let tree = {
     id: dir_id,
     name: display_name,
-    load_on_demand: false,
+    load_on_demand: load_on_demand,
   };
+  const treeChildren = await get_tree(dir_id, '', 1, 2, db);
+  if (treeChildren) tree.children = treeChildren;
   let parentId = id;
   while(parentId !== -1){
     const parent = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
@@ -88,9 +89,54 @@ async function get_tree_retraverse(id, dir_id, display_name, db) {
       const newtree = {
         id: parent[0].dir_id,
         name: parent[0].display_name,
-        load_on_demand: false,
+        load_on_demand: load_on_demand,
       };
       if (tree) newtree.children = [tree];
+      tree = newtree;
+      parentId = parent[0].id;
+    }
+  }
+  return tree;
+}
+
+async function get_tree_retraverse_full(id, dir_id, display_name, load_on_demand, db) {
+  // check child
+  const chkchild = await db.select('parent_id')
+                            .from('dirtree')
+                            .where('parent_id', id)
+                            .limit(1);
+  let tree = {
+    id: dir_id,
+    name: display_name,
+    load_on_demand: load_on_demand,
+  };
+  const treeChildren = await get_tree(dir_id, '', 1, 2, db);
+  if (treeChildren) tree.children = treeChildren;
+  let parentId = id;
+  while(parentId !== -1){
+    const parent = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
+                            .from('dirs')
+                            .join('dirtree', 'dirtree.parent_id','=', 'dirs.id')
+                            .where('dirtree.child_id', parentId)
+                            .orderBy('dirs.display_name').limit(1);
+  
+    if (parent.length === 0){
+      // 見つからない……！
+      parentId = -1;
+    }else{
+      // 見つかった
+      const newtree = {
+        id: parent[0].dir_id,
+        name: parent[0].display_name,
+        load_on_demand: load_on_demand,
+        children: await get_tree(parent[0].dir_id, '', 1, 2, db)
+      };
+      for(let i=0;i<(tree.children||[]).length;i++){
+        if (tree.id === newtree.children[i].id) {
+          newtree.children[i] = tree;
+          break;
+        }
+      }
       tree = newtree;
       parentId = parent[0].id;
     }
@@ -134,7 +180,6 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
     // 指定の子ノードを検索
     const tagrets = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
                       .from('dirs')
-                      .join('dirtree', 'dirtree.child_id','=', 'dirs.id')
                       .where('dirs.display_name', 'like', `%${keyword}%`)
                       .orderBy('dirs.display_name');
     if (tagrets.length === 0) {
@@ -142,36 +187,76 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
     }
     let mtree=[]
     for (const target of tagrets) {
-      mtree.push(await get_tree_retraverse(target.id,target.dir_id,target.display_name, db));
+      mtree.push(await get_tree_retraverse(target.id,target.dir_id,target.display_name,true, db));
     }
     tree.push(...mergeTree(mtree));
   }
   return tree;
 }
 
+async function get_tree_by_id(id, db) {
+  const tree = [];
+  const tagrets = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
+                    .from('dirs')
+                    .where('dirs.dir_id', id)
+                    .orderBy('dirs.display_name');
+  if (tagrets.length === 0) {
+    return [];
+  }
+  let mtree=[]
+  for (const target of tagrets) {
+    mtree.push(await get_tree_retraverse_full(target.id,target.dir_id,target.display_name,true, db));
+  }
+  mtree.push(...(await get_tree(null, '', 1, 2, db)));
+  tree.push(...mergeTree(mtree));
+  return tree;
+}
+
+function set_tree_loaded(tree,id,load_on_demand) {
+  let has_loaded = false;
+  for(const d of tree){
+    if (d.id === id) {
+      d.load_on_demand = load_on_demand;
+      has_loaded = true;
+    }
+    if (d.children) {
+      const r = set_tree_loaded(d.children,id,load_on_demand);
+      if (r){
+        has_loaded = true;
+        d.load_on_demand = load_on_demand;
+      }
+    }
+  }
+  return has_loaded;
+}
+
 export default async function tree(app, main, api, subdir, moduleName, settings) {
   // ツリー構造取得処理
   api.get('/contents/tree', async (req, res) => {
-    let root = req.query.node || '';
-    //if (req.query.selected_node) {
-    //  root = req.query.selected_node;
-    //}
-    const keyword = req.query.keyword || '';
-    if (root === '') {
-      root = null;
-    }
     let tree = null;
-    if (keyword === ''){
+    let root = req.query.node || '';
+    if (req.query.selected_node) {
       tree = await database.transaction(async (tx) => {
-        return await get_tree(root, keyword, 1, 3, tx);
+        const d = await get_tree_by_id(req.query.selected_node, tx);
+        set_tree_loaded(d, req.query.selected_node, false);
+        return d;
       });
     }else{
-      tree = await database.transaction(async (tx) => {
-        return await get_tree(root, keyword, 1, null, tx);
-      });
+      const keyword = req.query.keyword || '';
+      if (root === '') {
+        root = null;
+      }
+      if (keyword === ''){
+        tree = await database.transaction(async (tx) => {
+          return await get_tree(root, keyword, 1, 2, tx);
+        });
+      }else{
+        tree = await database.transaction(async (tx) => {
+          return await get_tree(root, keyword, 1, null, tx);
+        });
+      }
     }
     res.json(tree);
   });
-
   return null;
 }

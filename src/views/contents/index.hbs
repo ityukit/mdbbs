@@ -16,21 +16,15 @@
        + "&tagsId=" + encodeURIComponent(tagsid));
   }
   async function openFullNode(node) {
-    //console.log("openFullNode:", node);
     if (node && node.name !== '') {
       if (node.parent) {
         await openFullNode(node.parent);
       }
-      //console.log("Opening node:", node);
+      if (node.is_open){
+        $('#tree').tree('closeNode', node, false);
+      }
       if (!node.is_open) {
-        //console.log("Opening node run:", node);
-        await new Promise((resolve) => {
-          //console.log("Opening node:", node);
-          $('#tree').tree('openNode', node, false, (node) => {
-            //console.log("Node opened:", node);
-            resolve();
-          });
-        });
+         $('#tree').tree('openNode', node, false);
       }
     }
   }
@@ -44,29 +38,20 @@
       $('#treeKeyword').val(treeKeyword);
     }
     if (treeId) {
-      const state = JSON.parse(localStorage.getItem('contents-tree-dashboard'));
-      console.log(state)
-      if (state){
-        if (state.selected_node[0] !== treeId) {
-          state.selected_node = [treeId];
+      const node = $('#tree').tree('getNodeById', treeId);
+      if (node){
+        await openFullNode(node);
+        //await new Promise(r => setTimeout(() => r(), 200)); // wait for tree to open
+        const selected = $('#tree').tree('getSelectedNode');
+        //if (selected) {
+        //  $('#tree').tree('selectNode',selected,false);
+        //}
+        if (node && selected.id !== node.id) {
+          $('#tree').tree('selectNode', node, false);
         }
-        if (state.open_nodes.filter(id => id === treeId).length === 0) {
-          state.open_nodes.push(treeId);
-        }
-        console.log("Updating state:", state);
-        localStorage.setItem('contents-tree-dashboard', JSON.stringify(state));
+        //console.log("Node opened:", node);
+        $('#tree').tree('refresh');
       }
-      //const node = $('#tree').tree('getNodeById', treeId);
-      //if (node){
-      //  await openFullNode(node);
-      //  const selected = $('#tree').tree('getSelectedNode');
-      //  console.log("Selected node:", selected);
-      //  if (node && selected.id !== node.id) {
-      //    $('#tree').tree('selectNode', node);
-      //    console.log("Selected node:", node.id);
-      //  }
-      //}
-      $('#tree').tree('refresh');
     }
     if (tagsId) {
       const tags = tagsId.split('+').map(id => decodeURIComponent(id));
@@ -265,6 +250,8 @@
       }
     );
     $("#tagcloud")[0].addEventListener("click", clickTagCloud);
+
+    $("#tree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
   });
 </script>
 
