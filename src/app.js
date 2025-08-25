@@ -11,7 +11,7 @@ import cache from './cache.js';
 import express from 'express';
 import session from 'express-session';
 import sessionFileStore from 'session-file-store';
-import sessionRedis from 'connect-redis';
+import {RedisStore} from 'connect-redis';
 import hbs from 'hbs'
 import S3rver from 's3rver';
 import redisCache from './cache/redis.js';
@@ -52,6 +52,12 @@ main.use(express.json());
 main.use(express.urlencoded({ extended: true }));
 // session
 const redisstore = await (new redisCache(settings, __filename)).createNewClientInstance();
+if (settings.config.session.type === 'redis'){
+  redisstore.connect().catch((err) => {
+    logger.error(`Redis Client Connect Error: ${err.toString()}`);
+    process.exit(1);
+  });
+}
 main.use(
   session({
     secret: settings.config.session.secret,
@@ -72,7 +78,7 @@ main.use(
           ttl: settings.config.session.maxAge, // in seconds
         });
       } else if (settings.config.session.type === 'redis') {
-        return new sessionRedis.RedisStore({
+        return new RedisStore({
           client: redisstore,
           prefix: 'sess:',
           ttl: settings.config.session.maxAge, // in seconds
