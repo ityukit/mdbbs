@@ -81,8 +81,8 @@ export default class Redis {
     this.prefix += this.module_prefix;
   }
 
-  createNewClientInstance() {
-    const client = createClient(this.clientOption);
+  async createNewClientInstance() {
+    const client = await createClient(this.clientOption);
     client.on('error', (err) => this.logger.Error(`Redis Client Error: ${err.toString()}`));
     return client;
   }

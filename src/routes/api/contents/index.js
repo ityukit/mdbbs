@@ -8,7 +8,7 @@ async function get_index(node, tags, start, len, db) {
       // タグが指定されていない場合
       data = await db
                .select(
-                  'threads.id as id',
+                  'threads.thread_id as id',
                   'threads.title as title',
                   'contents.id as cid',
                   'contents.title as ctitle',
