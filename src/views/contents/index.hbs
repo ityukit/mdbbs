@@ -10,10 +10,14 @@
       tagsids.push(tag.getAttribute('data-tag-id'));
     }
     const tagsid = tagsids.map(id => encodeURIComponent(id)).join('+');
-    history.pushState(null, null, 
-      "?treeKeyword=" + encodeURIComponent(treeString)
-       + "&treeId=" + encodeURIComponent(treeid)
-       + "&tagsId=" + encodeURIComponent(tagsid));
+    if (treeString === '' && treeid === '' && tagsid === '') {
+      history.pushState(null, null, "{{baseUrl}}/contents");
+    } else {
+      history.pushState(null, null, 
+        "?treeKeyword=" + encodeURIComponent(treeString)
+         + "&treeId=" + encodeURIComponent(treeid)
+         + "&tagsId=" + encodeURIComponent(tagsid));
+    }
   }
   async function openFullNode(node) {
     if (node && node.name !== '') {
@@ -215,6 +219,10 @@
         ary.unshift(item);
         selectedNode = selectedNode.parent;
       }while(selectedNode.parent);
+      const item = $("<li>").addClass("breadcrumb-item").html(
+        `<a href="#" onclick="$('#tree').tree('selectNode', $('#tree').tree('getSelectedNode'));">{{ __ "page.contents.breadcrumb.dashboard" }}</a>`
+      );
+      ary.unshift(item);
       ary[ary.length - 1].addClass("active");
       ary[ary.length - 1].text(ary[ary.length - 1].text());
     }else{

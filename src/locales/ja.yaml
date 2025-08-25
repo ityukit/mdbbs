@@ -40,6 +40,7 @@ page:
       noTags: "タグが見つかりませんでした"
     breadcrumb:
       root: "(すべて)"
+      dashboard: "ダッシュボード"
 
 views:
   navigator:
