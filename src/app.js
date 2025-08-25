@@ -11,7 +11,7 @@ import cache from './cache.js';
 import express from 'express';
 import session from 'express-session';
 import sessionFileStore from 'session-file-store';
-import * as sessionRedis from 'connect-redis';
+import sessionRedis from 'connect-redis';
 import hbs from 'hbs'
 import S3rver from 's3rver';
 import redisCache from './cache/redis.js';
