@@ -197,7 +197,7 @@ export default function logger(gconfig, objectName) {
     } else if (k.type === 'file') {
       conflog4js.appenders.logFile = {
         type: 'file',
-        filename: `${gconfig.home}/../logs/${k.filename}`,
+        filename: `${gconfig.home}/logs/${k.filename}`,
         layout: { type: 'origin', addColor: false },
         maxLogSize: k.maxSize || '1M',
         backups: k.maxCount || 1,
