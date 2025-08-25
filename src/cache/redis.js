@@ -100,10 +100,10 @@ export default class Redis {
       try {
         ret = await callback(new RedisClientWrapper(client, this.prefix));
       } catch (e) {
-        await client.disconnect();
+        await client.destroy();
         throw e;
       }
-      await client.disconnect();
+      await client.destroy();
       // await client.quit();
       client = null;
     } catch (e) {
