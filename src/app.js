@@ -72,7 +72,7 @@ main.use(
         });
       } else if (settings.config.session.type === 'redis') {
         return new sessionRedis.RedisStore({
-          client: (new redisCache(settings, __filename)).createNewClientInstance(),
+          client: (await (new redisCache(settings, __filename)).createNewClientInstance()),
           prefix: 'sess:',
           ttl: settings.config.session.maxAge, // in seconds
         });
