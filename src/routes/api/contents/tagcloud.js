@@ -11,8 +11,14 @@ async function get_tags(id, nodeWord, db) {
                    .orderBy('tags.tag_id', 'asc')
                    .limit(50);
     if (nodeWord){
-      tx = tx.where('tags.display_name', 'like', `%${nodeWord}%`)
+      nodeWord = nodeWord.replace(/%/g, '\\%').replace(/_/g, '\\_');
+      tx = tx
+                   .join('threads', 'map_thread_tag.thread_id', '=', 'threads.id')
+                   .join('dirtree', 'threads.dirtree_id', '=', 'dirtree.id')
+                   .join('dirs', 'dirs.id', '=', 'dirtree.child_id')
+                   .where('dirs.display_name', 'like', `%${nodeWord}%`)
     }
+    console.log(tx.toString())
   }else{
     tx = db.select('tags.tag_id', 'tags.display_name').count('tags.tag_id as cnt')
                    .from('dirs')

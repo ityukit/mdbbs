@@ -176,6 +176,7 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
       tree.push(node);
     }
   }else{
+    keyword = keyword.replace(/%/g, '\\%').replace(/_/g, '\\_');
     // has keyword
     // 指定の子ノードを検索
     const tagrets = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')

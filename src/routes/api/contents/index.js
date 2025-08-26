@@ -76,6 +76,7 @@ async function get_index(node, tags, nodeWord,  start,len, db) {
             )
     }
     if (nodeWord !== '') {
+      nodeWord = nodeWord.replace(/%/g, '\\%').replace(/_/g, '\\_');
       tx = tx
             .join('dirs', 'dirtree.child_id', '=', 'dirs.id')
             .where('dirs.display_name', 'like', `%${nodeWord}%`)

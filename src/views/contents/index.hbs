@@ -374,6 +374,7 @@
         selectedTags[tagId] = tag;
       }
       //localStorage.setItem('contents-tag-dashboard', JSON.stringify(selectedTags));
+      contentsPage = 0;
       replaceUrl();
     }
   }
@@ -474,7 +475,7 @@
       ary[ary.length - 1].text(ary[ary.length - 1].text());
     }else{
       const keyword = document.getElementById("treeKeyword").value;
-      if (keyword !== ''){
+      if (false && keyword !== ''){
         const item = $("<li>").addClass("breadcrumb-item active").text("{{ __ "page.contents.breadcrumb.notFound" }}");
         ary.push(item);
       }else{

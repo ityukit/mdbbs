@@ -30,6 +30,7 @@ async function get_indexCount(node, nodeWord, tags, db) {
             )
     }
     if (nodeWord !== '') {
+      nodeWord = nodeWord.replace(/%/g, '\\%').replace(/_/g, '\\_');
       tx = tx
             .join('dirs', 'dirtree.child_id', '=', 'dirs.id')
             .where('dirs.display_name', 'like', `%${nodeWord}%`)
