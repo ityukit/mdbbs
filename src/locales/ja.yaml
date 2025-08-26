@@ -35,7 +35,7 @@ page:
       loading: "読み込み中..."
       loadError: "読み込みに失敗しました"
       contentArea: "コンテンツエリア"
-      noContent: "コンテンツが見つかりませんでした"
+      noContents: "コンテンツが見つかりませんでした"
     tree:
       search: Tree検索
       searchButton: 実行
@@ -45,6 +45,9 @@ page:
     breadcrumb:
       root: "(すべて)"
       dashboard: "ダッシュボード"
+    pagination:
+      previous: "前のページ"
+      next: "次のページ"
 
 views:
   navigator:

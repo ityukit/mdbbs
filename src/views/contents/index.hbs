@@ -97,6 +97,82 @@
           </div>
     `;
   }
+  let contentsCount = 0;
+  let contentsPage = 0;
+  let contentsCountPerPage = 10;
+  function updatePagination() {
+    if (contentsCount > 0){
+      if (contentsPage < 1) {
+        $('#prevPage').addClass('disabled');
+      } else {
+        $('#prevPage').removeClass('disabled');
+      }
+      for(let i=0; i < Math.ceil(contentsCount / contentsCountPerPage); i++) {
+        $(`#page-${i}`).removeClass('active');
+      }
+      $(`#page-${contentsPage}`).addClass('active');
+      if (contentsPage >= Math.ceil(contentsCount / contentsCountPerPage) - 1) {
+        $('#nextPage').addClass('disabled');
+      } else {
+        $('#nextPage').removeClass('disabled');
+      }
+    }
+  }
+  function changePagination(pageNo) {
+    if (pageNo < 1 || pageNo > Math.ceil(contentsCount / contentsCountPerPage)) {
+      // DO NOTHING
+    }else{
+      contentsPage = pageNo - 1;
+    }
+    updatePagination();
+    loadContents();
+  }
+  function prevPagination() {
+    if (contentsPage > 0) {
+      contentsPage--;
+      updatePagination();
+      loadContents();
+    }
+  }
+  function nextPagination() {
+    if (contentsPage < Math.ceil(contentsCount / contentsCountPerPage) - 1) {
+      contentsPage++;
+      updatePagination();
+      loadContents();
+    }
+  }
+  function loadPagination(){
+    const urlParams = new URLSearchParams(window.location.search);
+    const treeId = urlParams.get('treeId');
+    const tagsId = urlParams.get('tagsId');
+    let tags = null;
+    if (tagsId) tags = tagsId.split('+').map(id => decodeURIComponent(id));
+    $('#pagination').empty();
+    $.ajax({
+      url: "{{baseUrl}}/api/contents/indexCount",
+      data: {
+        node: treeId,
+        tags: tagsId
+      },
+      success: function(data) {
+        // 成功時の処理
+        $('#pagination').empty();
+        contentsCount = data.count;
+        if (contentsCount > 0){
+          $('#pagination').append(`<li class="page-item" id="prevPage"><a class="page-link" href="#" onclick="prevPagination()">{{ __ 'page.contents.pagination.previous' }}</a></li>`);
+          for (let i = 0; i < Math.ceil(contentsCount / contentsCountPerPage); i++) {
+            $('#pagination').append(`<li class="page-item" id="page-${i}"><a class="page-link" href="#" data-page="${i}" onclick="changePagination(${i + 1})">${i + 1}</a></li>`);
+          }
+          $('#pagination').append(`<li class="page-item" id="nextPage"><a class="page-link" href="#" onclick="nextPagination()">{{ __ 'page.contents.pagination.next' }}</a></li>`);
+        }
+        changePagination(1);
+      },
+      error: function(xhr, status, error) {
+        // エラー時の処理
+        $('#pagination').text("{{ __ 'page.contents.index.loadError'}}");
+      }
+    });
+  }
   function loadContents(){
     const urlParams = new URLSearchParams(window.location.search);
     const treeId = urlParams.get('treeId');
@@ -108,18 +184,24 @@
       url: "{{baseUrl}}/api/contents/index",
       data: {
         node: treeId,
-        tags: tagsId
+        tags: tagsId,
+        start: contentsPage * contentsCountPerPage,
+        len: contentsCountPerPage,
       },
       success: function(data) {
         // 成功時の処理
         $('#contentArea').empty();
-        for (const item of data) {
-          const contentHtml = generateContentOnce(item);
-          $('#contentArea').append(contentHtml);
-          $('#contentArea').append('<br>');
+        if (data.length === 0) {
+          $('#contentArea').text("{{ __ 'page.contents.index.noContents'}}");
+        }else{
+          for (const item of data) {
+            const contentHtml = generateContentOnce(item);
+            $('#contentArea').append(contentHtml);
+            $('#contentArea').append('<br>');
+          }
+          const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+          const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
         }
-        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
       },
       error: function(xhr, status, error) {
         // エラー時の処理
@@ -144,7 +226,7 @@
          + "&treeId=" + encodeURIComponent(treeid)
          + "&tagsId=" + encodeURIComponent(tagsid));
     }
-    loadContents();
+    loadPagination();
   }
   async function openFullNode(node) {
     if (node && node.name !== '') {
@@ -191,7 +273,7 @@
       }
     }
     loadTagCloud(false);
-    loadContents();
+    loadPagination();
   }
   function getAllNodes(data) {
     const ret = [];
@@ -434,6 +516,10 @@
           {{ __ 'page.contents.index.contentArea'}}
         </div>
       </section>
+      <nav aria-label="pagination">
+        <ul class="pagination justify-content-center" id="pagination">
+        </ul>
+      </nav>
     </div>
   </div> <!-- row -->
 </div>
