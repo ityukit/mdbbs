@@ -11,7 +11,7 @@ async function get_tags(id, nodeWord, db) {
                    .orderBy('tags.tag_id', 'asc')
                    .limit(50);
     if (nodeWord){
-      nodeWord = nodeWord.replace(/%/g, '\\%').replace(/_/g, '\\_');
+      nodeWord = nodeWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
       tx = tx
                    .join('threads', 'map_thread_tag.thread_id', '=', 'threads.id')
                    .join('dirtree', 'threads.dirtree_id', '=', 'dirtree.id')
