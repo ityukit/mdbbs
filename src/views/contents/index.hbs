@@ -157,16 +157,18 @@
   }
   function loadPagination(){
     const urlParams = new URLSearchParams(window.location.search);
-    const treeId = urlParams.get('treeId');
+    let treeId = urlParams.get('treeId');
     const tagsId = urlParams.get('tagsId');
     let tags = null;
     if (tagsId) tags = tagsId.split('+').map(id => decodeURIComponent(id));
+    const keyword = document.getElementById("treeKeyword").value;
     $('#pagination').empty();
     $.ajax({
       url: "{{baseUrl}}/api/contents/indexCount",
       data: {
         node: treeId,
-        tags: tagsId
+        tags: tagsId,
+        nodeWord: keyword,
       },
       success: function(data) {
         // 成功時の処理
@@ -190,16 +192,18 @@
   }
   function loadContents(){
     const urlParams = new URLSearchParams(window.location.search);
-    const treeId = urlParams.get('treeId');
+    let treeId = urlParams.get('treeId');
     const tagsId = urlParams.get('tagsId');
     let tags = null;
     if (tagsId) tags = tagsId.split('+').map(id => decodeURIComponent(id));
+    const keyword = document.getElementById("treeKeyword").value;
     $('#contentArea').text("{{ __ 'page.contents.index.loading'}}");
     $.ajax({
       url: "{{baseUrl}}/api/contents/index",
       data: {
         node: treeId,
         tags: tagsId,
+        nodeWord: keyword,
         start: contentsPage * contentsCountPerPage,
         len: contentsCountPerPage,
       },
@@ -311,6 +315,12 @@
       $('#tree').tree('loadDataFromUrl', "{{baseUrl}}/api/contents/tree");
       $('#currentTreeKeywordText').text('');
       $('#currentTreeKeyword').addClass('d-none');
+      const node = $('#tree').tree('getSelectedNode');
+      if (node) $('#tree').tree('selectNode', node , false);
+      contentsPage = 0;
+      loadTagCloud(false);
+      loadContents();
+      makeBreadcrumb();
       replaceUrl();
     } else {
       $('#tree').tree('loadDataFromUrl', "{{baseUrl}}/api/contents/tree?keyword=" + encodeURIComponent(keyword),null, ()=>{
@@ -322,6 +332,12 @@
         }
         $('#currentTreeKeywordText').text(keyword);
         $('#currentTreeKeyword').removeClass('d-none');
+        const node = $('#tree').tree('getSelectedNode');
+        if (node) $('#tree').tree('selectNode', node , false);
+        contentsPage = 0;
+        loadTagCloud(false);
+        loadContents();
+        makeBreadcrumb();
         replaceUrl();
       });
     }
@@ -364,9 +380,10 @@
   let lastTreeId = null;
   function loadTagCloud(startup){
     const selected = $('#tree').tree('getSelectedNode');
-    const selectedId = selected ? selected.id : '';
+    let selectedId = selected ? selected.id : '';
+    const keyword = document.getElementById("treeKeyword").value;
     $.ajax({
-      url: "{{baseUrl}}/api/contents/tagcloud?treeId=" + encodeURIComponent(selectedId),
+      url: "{{baseUrl}}/api/contents/tagcloud?treeId=" + encodeURIComponent(selectedId) + "&nodeWord=" + encodeURIComponent(keyword),
       method: "GET",
       success: async (data) => {
         if (tagCloudObject){
@@ -456,8 +473,14 @@
       ary[ary.length - 1].addClass("active");
       ary[ary.length - 1].text(ary[ary.length - 1].text());
     }else{
-      const item = $("<li>").addClass("breadcrumb-item active").text("{{ __ "page.contents.breadcrumb.root" }}");
-      ary.push(item);
+      const keyword = document.getElementById("treeKeyword").value;
+      if (keyword !== ''){
+        const item = $("<li>").addClass("breadcrumb-item active").text("{{ __ "page.contents.breadcrumb.notFound" }}");
+        ary.push(item);
+      }else{
+        const item = $("<li>").addClass("breadcrumb-item active").text("{{ __ "page.contents.breadcrumb.root" }}");
+        ary.push(item);
+      }
     }
     breadcrumbList.append(ary);
   }

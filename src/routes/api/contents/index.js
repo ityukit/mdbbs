@@ -20,7 +20,7 @@ async function usermapping(uid,db){
   }
 }
 
-async function get_index(node, tags, start, len, db) {
+async function get_index(node, tags, nodeWord,  start,len, db) {
   let data = [];
   let tx = db.select(
                   'threads.thread_id as id',
@@ -75,6 +75,11 @@ async function get_index(node, tags, start, len, db) {
               'threads.id','=', 'filtered_threads.thread_id'
             )
     }
+    if (nodeWord !== '') {
+      tx = tx
+            .join('dirs', 'dirtree.child_id', '=', 'dirs.id')
+            .where('dirs.display_name', 'like', `%${nodeWord}%`)
+    }
   }else{
     // 指定のノード対象
     tx = tx
@@ -96,6 +101,7 @@ async function get_index(node, tags, start, len, db) {
               'threads.id','=', 'filtered_threads.thread_id'
             )
     }
+    // nodeWordは無視
   }
   data = await tx;
   // formatting
@@ -132,11 +138,12 @@ async function get_index(node, tags, start, len, db) {
 export default async function index(app, main, api, subdir, moduleName, settings) {
   // ツリー構造取得処理
   api.get('/contents/index', async (req, res) => {
-    const node = req.query.node || '';
+    let node = req.query.node || '';
     const tagsStr = req.query.tags || '';
     const tags = tagsStr !== '' ? tagsStr.split('+').map(id => decodeURIComponent(id)) : [];
     const startStr = req.query.start || '0';
     const lenStr = req.query.len || '50';
+    const nodeWord = req.query.nodeWord || '';
     let start = utils.parseSafeInt(startStr, 0);
     let len = utils.parseSafeInt(lenStr, 50);
     if (start < 0) start = 0;
@@ -144,7 +151,7 @@ export default async function index(app, main, api, subdir, moduleName, settings
     // safety
     if (len > 1000) len = 1000;
     let data = await database.transaction(async (tx) => {
-      return await get_index(node, tags, start, len, tx);
+      return await get_index(node, tags, nodeWord, start, len, tx);
     });
     res.json(data);
   });

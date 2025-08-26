@@ -1,6 +1,6 @@
 import database from '../../../database.js';
 
-async function get_indexCount(node, tags, db) {
+async function get_indexCount(node, nodeWord, tags, db) {
 
   let data = [];
   let tx = db.count(
@@ -29,6 +29,11 @@ async function get_indexCount(node, tags, db) {
               'threads.id','=', 'filtered_threads.thread_id'
             )
     }
+    if (nodeWord !== '') {
+      tx = tx
+            .join('dirs', 'dirtree.child_id', '=', 'dirs.id')
+            .where('dirs.display_name', 'like', `%${nodeWord}%`)
+    }
   }else{
     // 指定のノード対象
     tx = tx
@@ -50,6 +55,7 @@ async function get_indexCount(node, tags, db) {
               'threads.id','=', 'filtered_threads.thread_id'
             )
     }
+    // nodeWordは無視
   }
   data = await tx.first();
   return {
@@ -60,11 +66,12 @@ async function get_indexCount(node, tags, db) {
 export default async function index(app, main, api, subdir, moduleName, settings) {
   // ツリー構造取得処理
   api.get('/contents/indexCount', async (req, res) => {
-    const node = req.query.node || '';
+    let node = req.query.node || '';
     const tagsStr = req.query.tags || '';
     const tags = tagsStr !== '' ? tagsStr.split('+').map(id => decodeURIComponent(id)) : [];
+    const nodeWord = req.query.nodeWord || '';
     let data = await database.transaction(async (tx) => {
-      return await get_indexCount(node, tags, tx);
+      return await get_indexCount(node, nodeWord, tags, tx);
     });
     res.json(data);
   });

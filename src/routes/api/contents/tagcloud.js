@@ -1,16 +1,20 @@
 import database from '../../../database.js';
 
-async function get_tags(id, db) {
+async function get_tags(id, nodeWord, db) {
   let tags = null;
+  let tx = null;
   if (id === ''){
-    tags = await db.select('tags.tag_id', 'tags.display_name').count('tags.tag_id as cnt')
+    tx = db.select('tags.tag_id', 'tags.display_name').count('tags.tag_id as cnt')
                    .from('map_thread_tag').join('tags', 'map_thread_tag.tag_id', '=', 'tags.id')
                    .groupBy(['tags.tag_id','tags.display_name'])
                    .orderBy('cnt', 'desc')
                    .orderBy('tags.tag_id', 'asc')
                    .limit(50);
+    if (nodeWord){
+      tx = tx.where('tags.display_name', 'like', `%${nodeWord}%`)
+    }
   }else{
-    tags = await db.select('tags.tag_id', 'tags.display_name').count('tags.tag_id as cnt')
+    tx = db.select('tags.tag_id', 'tags.display_name').count('tags.tag_id as cnt')
                    .from('dirs')
                    .join('dirtree', 'dirs.id', '=', 'dirtree.child_id')
                    .join('threads', 'dirtree.id', '=', 'threads.dirtree_id')
@@ -21,7 +25,11 @@ async function get_tags(id, db) {
                    .orderBy('cnt', 'desc')
                    .orderBy('tags.tag_id', 'asc')
                    .limit(50);
+    if (nodeWord){
+      tx = tx.where('tags.display_name', 'like', `%${nodeWord}%`);
+    }
   }
+  tags = await tx;
   return tags.map(tag => {
     return {
       tag_id: tag.tag_id,
@@ -35,9 +43,9 @@ export default async function tagcloud(app, main, api, subdir, moduleName, setti
   // ツリー構造取得処理
   api.get('/contents/tagcloud', async (req, res) => {
     let root = req.query.treeId || '';
-
+    const nodeWord = req.query.nodeWord || '';
     const tags = await database.transaction(async (tx) => {
-      return await get_tags(root, tx);
+      return await get_tags(root, nodeWord, tx);
     });
     res.json(tags);
   });

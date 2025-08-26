@@ -44,6 +44,7 @@ page:
       noTags: "タグが見つかりませんでした"
     breadcrumb:
       root: "(すべて)"
+      notFound: "見つかりませんでした"
       dashboard: "ダッシュボード"
     pagination:
       previous: "前のページ"
