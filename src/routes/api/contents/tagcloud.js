@@ -25,9 +25,7 @@ async function get_tags(id, nodeWord, db) {
                    .orderBy('cnt', 'desc')
                    .orderBy('tags.tag_id', 'asc')
                    .limit(50);
-    if (nodeWord){
-      tx = tx.where('tags.display_name', 'like', `%${nodeWord}%`);
-    }
+    // nodeWordは無視
   }
   tags = await tx;
   return tags.map(tag => {
