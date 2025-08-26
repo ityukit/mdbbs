@@ -117,10 +117,24 @@
         $('#nextPage').removeClass('disabled');
       }
     }
+    const urlParams = new URLSearchParams(window.location.search);
+    let s = '';
+    for(const [key,val] of urlParams.entries()){
+      if(key !== 'page'){
+        s += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(val);
+      }
+    }
+    if (s.length > 0){
+      s += '&page=' + encodeURIComponent(contentsPage);
+    }
+    if (s.length > 0){
+      s = '?' + s.substring(1);
+      history.pushState(null, null, s);
+    }
   }
   function changePagination(pageNo) {
     if (pageNo < 1 || pageNo > Math.ceil(contentsCount / contentsCountPerPage)) {
-      // DO NOTHING
+      contentsPage = 0;
     }else{
       contentsPage = pageNo - 1;
     }
@@ -165,7 +179,8 @@
           }
           $('#pagination').append(`<li class="page-item" id="nextPage"><a class="page-link" href="#" onclick="nextPagination()">{{ __ 'page.contents.pagination.next' }}</a></li>`);
         }
-        changePagination(1);
+        updatePagination();
+        loadContents();
       },
       error: function(xhr, status, error) {
         // エラー時の処理
@@ -218,13 +233,14 @@
       tagsids.push(tag.getAttribute('data-tag-id'));
     }
     const tagsid = tagsids.map(id => encodeURIComponent(id)).join('+');
-    if (treeString === '' && treeid === '' && tagsid === '') {
+    if (treeString === '' && treeid === '' && tagsid === '' && contentsPage === 0) {
       history.pushState(null, null, "{{baseUrl}}/contents");
     } else {
       history.pushState(null, null, 
         "?treeKeyword=" + encodeURIComponent(treeString)
          + "&treeId=" + encodeURIComponent(treeid)
-         + "&tagsId=" + encodeURIComponent(tagsid));
+         + "&tagsId=" + encodeURIComponent(tagsid)
+         + "&page=" + encodeURIComponent(contentsPage));
     }
     loadPagination();
   }
@@ -246,6 +262,7 @@
     const treeKeyword = urlParams.get('treeKeyword');
     const treeId = urlParams.get('treeId');
     const tagsId = urlParams.get('tagsId');
+    const page = urlParams.get('page');
 
     if (treeKeyword) {
       $('#treeKeyword').val(treeKeyword);
@@ -271,6 +288,9 @@
       for (const tag of tags) {
         addTag(tagData[tag]);
       }
+    }
+    if (page){
+      contentsPage = parseInt(page, 10);
     }
     loadTagCloud(false);
     loadPagination();
@@ -458,6 +478,7 @@
     $("#tree").on(
       'tree.select',
       function(event) {
+        contentsPage = 0;
         loadTagCloud(false);
       }
     );
