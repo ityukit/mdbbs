@@ -19,12 +19,14 @@
   }
 
   addEventListener("load", (event) => {
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
   });
 </script>
 
 <div class="container-fluid">
   <div class="row">
-    <div class="col-lg-8">
+    <div class="col-lg-7">
       <nav id="breadcrumb" aria-label="breadcrumb">
         <ol id="breadcrumbList" class="breadcrumb">
           <li class="breadcrumb-item"><a href="{{baseUrl}}/contents">{{ __ 'page.thread.breadcrumb.dashboard' }}</a></li>
@@ -41,6 +43,19 @@
         {{/each}}
       </div>
     </div>
+    <div class="col-lg-1 text-end">
+      <div id="info">
+        <a class="userLink"
+          href="{{ baseUrl }}/users/{{ thread.created_user.id }}"
+          data-bs-toggle="tooltip" data-bs-html="true"
+          data-bs-title="<div class='text-start'>{{ __ 'page.thread.info.createdAt' }}: {{ thread.created_at_str }}<br>
+          {{ __ 'page.thread.info.updatedAt' }}: {{ thread.last_updated_at_str }}<br>
+          {{ __ 'page.thread.info.author' }}: {{ thread.created_user.display_name }}</div>">
+          <span class="dfs-7">{{ __ "page.thread.info.author" }}: {{ thread.created_user.display_name }}</span>
+        </a>
+      </div>
+    </div>
+    
     <section id="main_section">
       <div class="row">
         <div class="col-md-9" id="main">
