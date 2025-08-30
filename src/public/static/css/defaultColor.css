@@ -42,3 +42,23 @@ header {
     background-color: rgba(255, 255, 255, .1);
     border: 1px solid #fff;
 }
+.wave-comment {
+  text-decoration-color: #ddd;
+  color: #aaa;
+}
+
+
+.omitLoad {
+  text-decoration: none;
+  color: #aaa
+}
+.omitLoad:hover {
+  text-decoration: underline;
+  color: #aaa
+}
+
+.omitLoad:visited {
+  text-decoration: none;
+  color: #aaa
+}
+

@@ -57,6 +57,9 @@ page:
       createdAt: "作成日"
       updatedAt: "更新日"
       author: "作成者"
+    omission: "省略されました。展開するにはクリックしてください"
+    omitCount: "省略されました。展開するにはクリックしてください。省略されたコメント数: {0}"
+    loadError: "読み込みに失敗しました"
 
 views:
   navigator:

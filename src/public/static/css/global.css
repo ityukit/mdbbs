@@ -126,3 +126,41 @@ footer{
   /* width: 300px; *//* 任意の幅 */
   max-width: 300px; /* 必要であれば最大幅を指定 */
 }
+
+.vtree-dirvr {
+  display: inline-block;
+  align-self: stretch;
+  width: 1px;
+  min-height: 1em;
+  background-color: currentcolor;
+  opacity: .1;
+  margin-left: 1rem;
+  display: inline-block;
+  _display: inline;
+}
+.vtree-dirhr{
+  width: 0.5rem;
+  height: 1px;
+  background-color: currentcolor;
+  opacity: .1;
+  margin-top: 1.5rem;
+  display: inline-block;
+  _display: inline;
+}
+.vtree-area{
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+.vtree-areaChild{
+  align-items: start;
+  display: flex;
+  width: 100%;
+}
+
+.wave-comment {
+  text-decoration: underline overline;
+  text-decoration-style: wavy;
+}
+

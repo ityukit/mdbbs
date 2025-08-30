@@ -17,8 +17,390 @@
       }[match]
     });
   }
+  function format_string() {
+    var args = arguments;
+    return args[0].replace(/{(\d+)}/g, function(match, number) {
+      number = parseInt(number,10);
+      return args[number+1] === undefined ? match : args[number+1];
+    });
+  };
 
-  addEventListener("load", (event) => {
+  function generateContentOnce(data) {
+    return `
+        <div class="container-fluid border rounded shadow">
+          <div class="row">
+            <div class="col-10">
+              <h5>${escape_html(data.title)}</h5>
+              <!-- contents_id:${data.id} -->
+            </div>
+            <div class="col-2 text-end">
+              <a class="userLink"
+                href="{{ baseUrl }}/users/${data.created_user.id}"><span class="dfs-7">${escape_html(data.created_user.display_name)}</span></a><br>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-1">
+              &nbsp;
+            </div>
+            <div class="col-11">
+              ${data.contents}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col text-end">
+              <p><span class="dfs-8">${escape_html(data.updated_at_str)}</span></p>
+            </div>
+          </div>
+        </div>
+    `;
+  }
+
+  let threadAllData = {
+    contents: [],
+  };
+  // data
+  //   |- contents[]
+  function insertData(contentsId,data,addData){
+    for(let i=0;i<data.contents.length;i++){
+      if (data.contents[i] === null) continue;
+      if (data.contents[i].id === contentsId){
+        let newContents = [];
+        for(let j=0;j<i;j++){
+          newContents.push(data.contents[j]);
+        }
+        newContents.push(...addData);
+        // null skip
+        let n = i+1;
+        for(let j=i+1;j<data.contents.length;j++){
+          if (data.contents[j] === null) continue;
+          if (!data.contents[j].id) continue;
+          n = j;
+          break;
+        }
+        // 同じ番号が有ればスキップ
+        let skip = n;
+        const skipchk = addData[addData.length-1];
+        for(let j=n;j<data.contents.length;j++){
+          if (data.contents[j] === null) continue;
+          if (!data.contents[j].id) continue;
+          if (skipchk.id === data.contents[j].id){
+            skip = j+1;
+            break;
+          }
+        }
+        for(let j=skip;j<data.contents.length;j++){
+          newContents.push(data.contents[j]);
+        }
+        data.contents = newContents;
+        return true;
+      }
+      if (data.contents[i] && data.contents[i].children){
+        const d = {
+          contents: data.contents[i].children
+        };
+        if (insertData(contentsId,d,addData)){
+          data.contents[i].children = d.contents;
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  function calcUpdateOmitCount(data, count){
+    let dataCount = 0;
+    for(let i=0;i<data.length;i++){
+      if (data[i] === null) continue;
+      dataCount++;
+      if (data[i].children){
+        calcUpdateOmitCount(data[i].children, data[i].childCount || 0);
+      }
+    }
+    if (count < dataCount){
+      // not omit
+      // DO NOTHING
+    }else{
+      const omitCount = count - dataCount;
+      for(let i=0;i<data.length;i++){
+        if (data[i] !== null) continue;
+        data[i] = {
+          omitCount
+        };
+        break;
+      }
+    }
+  }
+  function loadThread(startContentsId,subtree, listOnly){
+    $.ajax({
+      url: "{{baseUrl}}/api/contents/thread/"+startContentsId + "?" + (subtree > 0 ? "subtree=" + subtree : "") + "&" + (listOnly ? "listOnly=1" : "listOnly=0"),
+      type: "GET",
+      dataType: "json",
+      success: function(data) {
+        if (startContentsId === {{thread.root_contents_id}}){
+          threadAllData.contents = data.contents;
+        }else{
+          insertData(startContentsId,threadAllData,data.contents);
+        }
+        if (!threadAllData.count){
+          threadAllData.count = data.count;
+        }
+        calcUpdateOmitCount(threadAllData.contents, threadAllData.count);
+        generateContent(threadAllData);
+      },
+      error: function(xhr, status, error) {
+        alert("{{ __ 'page.thread.loadError' }}");
+      }
+    });
+  }
+
+  /*
+    data
+      |- contents[]
+      |    - title, ...
+      |    - children[]
+              |- contents[]
+  */
+  function generateContentSub(area,contentsList,parentId) {
+    if (contentsList === null){
+      // not load
+      area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + parentId + ",1,false)'>{{ __ 'page.thread.omission' }}</a>"));
+    }else if (contentsList.length === 0){
+      // DO NOTHING
+    }else{
+      let lastLoadedId = null;
+      for(let i=0;i<contentsList.length;i++){
+        if (contentsList[i] === null || !contentsList[i].id){
+          // not load
+          if (contentsList[i] === null || !contentsList[i].omitCount) {
+            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,false)'>{{ __ 'page.thread.omission' }}</a>"));
+          }else{
+            const omitCount = contentsList[i].omitCount;
+            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,false)'>" + format_string("{{ __ 'page.thread.omitCount' }}", omitCount) + "</a>"));
+          }
+          if (i !== contentsList.length - 1){
+            const areaChild = $("<div>").addClass("vtree-areaChild");
+            areaChild.append($("<div>").addClass("vtree-dirvr"));
+            area.append(areaChild);
+          }
+          continue;
+        }
+        lastLoadedId = contentsList[i].id;
+        area.append(generateContentOnce(contentsList[i]));
+        let areaChild = null;
+        let hasChild = false;
+        if (contentsList[i].children) {
+          hasChild = contentsList[i].children.length > 0;
+        }else{
+          hasChild = true;
+        }
+        const isLast = i === contentsList.length - 1;
+        if (!isLast || hasChild){
+          areaChild = $("<div>").addClass("vtree-areaChild");
+          areaChild.append($("<div>").addClass("vtree-dirvr"));
+          area.append(areaChild);
+        }
+        if (contentsList[i].children === null || (contentsList[i].children && contentsList[i].children.length > 0)) {
+          if (!areaChild){
+            areaChild = $("<div>").addClass("vtree-areaChild");
+            areaChild.append($("<div>").addClass("vtree-dirvr"));
+            area.append(areaChild);
+          }
+          areaChild.append($("<div>").addClass("vtree-dirhr"));
+          const subarea = $("<div>").addClass("vtree-area");
+          areaChild.append(subarea);
+          generateContentSub(subarea, contentsList[i].children, contentsList[i].id);
+        }
+      }
+    }
+  }
+  function generateContent(data) {
+    $('#contentArea').empty();
+    if (!data || !data.contents) {
+      return;
+    }
+    const area = $("<div>").addClass("vtree-area");
+    generateContentSub(area, data.contents, {{thread.root_contents_id}});
+    $('#contentArea').append(area);
+  }
+
+  addEventListener("load", async (event) => {
+    /*
+    data.contents = [
+        {
+          id: 1,
+          title: "Test Title1",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01"
+        },
+        {
+          id: 2,
+          title: "Test Title2",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01"
+        },
+        null,
+        {
+          id: 4,
+          title: "Test Title4",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01"
+        },
+        {
+          omitCount: 1,
+        },
+        {
+          id: 6,
+          title: "Test Title6",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01"
+        }
+    ];
+    insertData(2,data, {
+      contents: [
+        {
+          id: 3,
+          title: "Test Title3",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01",
+          children: [
+            {
+              id: 31,
+              title: "Test Title3-1",
+              created_user: {
+                id: 1,
+                display_name: "Test User"
+              },
+              contents: "This is a test content.",
+              updated_at_str: "2023-01-01"
+            },
+            {
+              omitCount: 1,
+            },
+            {
+              id: 33,
+              title: "Test Title3-3",
+              created_user: {
+                id: 1,
+                display_name: "Test User"
+              },
+              contents: "This is a test content.",
+              updated_at_str: "2023-01-01"
+            }
+          ]
+        }
+      ]
+    })
+    insertData(4,data,{
+      contents: [
+        {
+          id: 5,
+          title: "Test Title5",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01"
+        }
+      ]
+    })
+    generateContent(data)
+    */
+    /*
+    generateContent({
+      contents: [
+        {
+          title: "Test Title1",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01"
+        },
+        {
+          title: "Test Title2",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01"
+        },
+        null,
+        {
+          title: "Test Title3",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01",
+          children: [
+            {
+              title: "Test Title3-1",
+              created_user: {
+                id: 1,
+                display_name: "Test User"
+              },
+              contents: "This is a test content.",
+              updated_at_str: "2023-01-01"
+            },
+            {
+              title: "Test Title3-2",
+              created_user: {
+                id: 1,
+                display_name: "Test User"
+              },
+              contents: "This is a test content.",
+              updated_at_str: "2023-01-01",
+              children: [
+                null
+              ]
+            },
+            {
+              title: "Test Title3-3",
+              created_user: {
+                id: 1,
+                display_name: "Test User"
+              },
+              contents: "This is a test content.",
+              updated_at_str: "2023-01-01"
+            }
+          ]
+        },
+        {
+          title: "Test Title4",
+          created_user: {
+            id: 1,
+            display_name: "Test User"
+          },
+          contents: "This is a test content.",
+          updated_at_str: "2023-01-01"
+        }
+      ]
+    })
+    */
+    loadThread({{thread.root_contents_id}},0,false);
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
   });
@@ -59,7 +441,9 @@
     <section id="main_section">
       <div class="row">
         <div class="col-md-9" id="main">
-          <div id="contentArea">Contents</div>
+          <div id="contentArea">
+
+          </div>
         </div>
         <div class="col-md-3 d-none d-md-block" id="mainNavi">Navi</div>
       </div>

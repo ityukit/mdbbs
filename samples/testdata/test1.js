@@ -2,7 +2,7 @@ import { exit } from 'node:process';
 import database from '../../src/database.js';
 import init from '../../src/init.js';
 import pHash from '../../src/lib/phash.js';
-import { th } from 'date-fns/locale';
+import * as fs from 'node:fs';
 
 const settings = init.getSettings();
 const phash = new pHash(settings);
@@ -22,6 +22,7 @@ const data = {
   tags: [],
   dirs: [],
   threads: [],
+  contents1: []
 }
 
 // create user
@@ -205,6 +206,87 @@ for(let i=0;i<data.tags.length/4;i++){
     tag_id: data.tags[i].id,
     created_user_id: data.user_id
   });
+}
+
+// add contents for contents 1
+let target1 = data.contents[0];
+for(let i=0;i<30;i++){
+  let d = await database('contents').insert({
+    title: 'テストデータ 1-' + (i+1),
+    revision: 1,
+    contents: 'これはサンプルコンテンツ(1-' + (i+1) + ')の本文です。',
+    updated_user_id: data.user_id,
+    created_user_id: data.user_id,
+  }).returning('id');
+  await database('contents_list').insert({
+    parent_id: target1.id,
+    child_id: d[0].id
+  });
+  target1 = d[0];
+  let target2;
+  for(let j=0;j<5;j++){
+    let d2 = await database('contents').insert({
+      title: 'テストデータ 1-' + (i+1) + '-' + (j+1),
+      revision: 1,
+      contents: 'これはサンプルコンテンツ(1-' + (i+1) + '-' + (j+1) + ')の本文です。',
+      updated_user_id: data.user_id,
+      created_user_id: data.user_id,
+    }).returning('id');
+    if (j === 0){
+      await database('contents_tree').insert({
+        parent_id: target1.id,
+        child_id: d2[0].id
+      });
+    }else{
+      await database('contents_list').insert({
+        parent_id: target2.id,
+        child_id: d2[0].id
+      });
+    }
+    target2 = d2[0];
+    let target3;
+    for(let k=0;k<3;k++){
+      let d3 = await database('contents').insert({
+        title: 'テストデータ 1-' + (i+1) + '-' + (j+1) + '-' + (k+1),
+        revision: 1,
+        contents: 'これはサンプルコンテンツ(1-' + (i+1) + '-' + (j+1) + '-' + (k+1) + ')の本文です。',
+        updated_user_id: data.user_id,
+        created_user_id: data.user_id,
+      }).returning('id');
+      if (k === 0){
+        await database('contents_tree').insert({
+          parent_id: target2.id,
+          child_id: d3[0].id
+        });
+      }else{
+        await database('contents_list').insert({
+          parent_id: target3.id,
+          child_id: d3[0].id
+        });
+      }
+      target3 = d3[0];
+    }
+  }
+}
+console.log(target1)
+// test markdown
+{
+  let d = await database('contents').insert({
+    title: 'テストデータ 1-markdown',
+    revision: 1,
+    contents: `
+# テストデータ 1-markdown
+これはサンプルコンテンツ(1-markdown)の本文です。
+
+` + fs.readFileSync('./samples/testdata/test1.md', 'utf-8'),
+    updated_user_id: data.user_id,
+    created_user_id: data.user_id,
+  }).returning('id');
+  await database('contents_list').insert({
+    parent_id: target1.id,
+    child_id: d[0].id
+  });
+  target1 = d[0];
 }
 
 await database.destroy()
