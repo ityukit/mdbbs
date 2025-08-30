@@ -66,16 +66,19 @@ class RubyPlugin{
   static execAll(str){
     let match;
     const result = [];
-    while ((match = RubyPlugin.RUBY_EXP.exec(str)) !== null) {
+    let re = new RegExp(RubyPlugin.RUBY_EXP.source,RubyPlugin.RUBY_EXP.flags);
+    let lastIndex = 0;
+    while ((match = re.exec(str)) !== null) {
+      lastIndex = re.lastIndex;
       const bText = match[1];
-      //const aText = match[10];
+      const aText = '';//match[11];
       let isAdd = false;
       if (match[2] !== undefined && match[3] !== undefined) {
         result.push({
           bText: bText,
           rubyText: match[2],
           ruby: match[3],
-          //aText: aText,
+          aText: aText,
         });
         isAdd = true;
       }
@@ -84,7 +87,7 @@ class RubyPlugin{
           bText: bText,
           rubyText: match[4],
           ruby: match[5],
-          //aText: aText,
+          aText: aText,
         });
         isAdd = true;
       }
@@ -93,7 +96,7 @@ class RubyPlugin{
           bText: bText,
           rubyText: match[6],
           ruby: match[7],
-          //aText: aText,
+          aText: aText,
         });
         isAdd = true;
       }
@@ -102,7 +105,7 @@ class RubyPlugin{
           bText: bText,
           rubyText: match[8],
           ruby: match[9],
-          //aText: aText,
+          aText: aText,
         });
         isAdd = true;
       }
@@ -111,7 +114,7 @@ class RubyPlugin{
           bText: bText,
           rubyText: match[10],
           ruby: null,
-          //aText: aText,
+          aText: aText,
         });
         isAdd = true;
       }
@@ -120,10 +123,19 @@ class RubyPlugin{
           bText: bText,
           rubyText: '',
           ruby: null,
-          //aText: aText,
+          aText: aText,
         });
       }
     }
+    if (lastIndex < str.length){
+      result.push({
+        bText: str.substring(lastIndex),
+        rubyText: '',
+        ruby: null,
+        aText: '',
+      });
+    }
+
     return result;
   }
   static rubyParse(str){
@@ -135,7 +147,7 @@ class RubyPlugin{
         bText: item.bText,
         rubyText: item.rubyText,
         ruby: item.ruby,
-        //aText: item.aText,
+        aText: item.aText,
       })));
     }
     if (rt.length < 1) return null;
@@ -146,7 +158,6 @@ class RubyPlugin{
       const visitor = (node,index,parent) => {
         const children = [...node.children];
         const ruby = RubyPlugin.rubyParse(children[0].value) || [];
-        console.log("ruby:", JSON.stringify(ruby));
         parent.children[index] = {
           type: 'paragraph',
           children: ruby
@@ -157,13 +168,13 @@ class RubyPlugin{
                   bText: r.bText,
                   rubyText: r.rubyText,
                   ruby: r.ruby,
-                  //aText: r.aText
+                  aText: r.aText
                 },
                 children: [],
               };
           }),
         };
-        console.log(JSON.stringify(parent.children[index]));
+        // console.log(JSON.stringify(parent.children[index]));
       };
       visit(tree, RubyPlugin.isRuby, visitor);
     };
@@ -195,11 +206,11 @@ class RubyPlugin{
     const bText = node.properties.bText;
     const ruby = node.properties.ruby;
     const rubyText = node.properties.rubyText;
-    //const aText = node.properties.aText;
+    const aText = node.properties.aText;
     if (ruby === null){
       return [{
         type: "text",
-        value: bText + rubyText,// + aText,
+        value: bText + rubyText + aText,
       }];
     }
     let r = [];
@@ -208,7 +219,6 @@ class RubyPlugin{
         type: "text",
         value: bText,
       });
-      console.log("bText:", bText);
     }
     r.push(
         {
@@ -273,12 +283,12 @@ class RubyPlugin{
           ],
         },
       );
-    //if (aText){
-    //  r.push({
-    //    type: "text",
-    //    value: aText,
-    //  });
-    //}
+    if (aText){
+      r.push({
+        type: "text",
+        value: aText,
+      });
+    }
     return r;
   }
 }
@@ -318,6 +328,7 @@ class ParserDefault{
 
 const instance = new ParserDefault();
 await instance._init();
+/*
 const processor = instance.processor;
 var input = "とりあえず｜これはルビです《ルビテキスト》";
 input=`
@@ -338,5 +349,5 @@ console.log(JSON.parse(JSON.stringify(inspect(transformed))));
 console.log(await processor.process(input));
 console.log(processor.stringify(transformed));
 console.log(await instance.parse(input));
-
+*/
 export default instance;
