@@ -29,6 +29,7 @@ async function get_coutents_count(cid,db){
         qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
           .from('t_contents_list')
           .join('contents_list', 't_contents_list.child_id', '=', 'contents_list.parent_id')
+          .where('contents_list.parent_id', '>', 0)
       });
     })
     .count('t_contents_list.id as cnt').from('t_contents_list').first()).cnt;
@@ -64,6 +65,7 @@ async function get_contents(cid,listmax,db) {
       .orderBy('contents.id','asc')
       .limit(listmax);
   if (!currentList) return null;
+  console.log("currentList:", currentList);
   for(const c of currentList){
     ret.push({
       id: c.id,
@@ -133,21 +135,25 @@ async function get_contents(cid,listmax,db) {
       }
     }
   }
+  console.log("ret:", cid,listmax,ret);
   return ret;
 }
 
 async function get_child_contents(cid, subtree,listOnly, db) {
   let ret = [];
   const childs = await db.select('contents_tree.child_id').from('contents_tree').where({ parent_id: cid });
-  if (childs.length < 1) return [];
+  if (childs.length < 1) return [[],0];
   for(const c of childs) {
-    ret.push(...await get_contents(c.child_id, 1, db));
+    const childContents = await get_contents(c.child_id, 5, db);
+    if (childContents.length > 0) {
+      ret.push(...childContents);
+    }
     for(const cc of ret) {
       if (!cc) continue;
       const childCount = await db.count('contents_tree.id as cnt').from('contents_tree').where({ parent_id: cc.id }).first();
       if (subtree > 0){
         if (childCount.cnt > 0) {
-          cc.children = (await get_child_contents(cc.id,subtree-1,listOnly, db))[0];
+          cc.children = (await get_child_contents(cc.id,subtree-1,true, db))[0];
         }
         cc.childCount = childCount.cnt;
       }else{
@@ -159,28 +165,34 @@ async function get_child_contents(cid, subtree,listOnly, db) {
   return [ret,childs.length];
 }
 
-async function get_thread_by_id(cid, subtree,listOnly, db) {
+async function get_thread_by_id(cid, subtree,listOnly, treeOnly,listMax, db) {
   // check tid and cid
   const chk = await db.select('contents.id').from('contents').where({ id: cid }).first();
   if (!chk) return null;
   // read current list
+  let loadListCount = listMax;
+  if (treeOnly) loadListCount = 1;
   let ret = {
-    contents: await get_contents(cid, 10, db),
+    contents: await get_contents(cid, loadListCount, db),
     count: (await get_coutents_count(cid, db))
   };
-  if (!listOnly){
-    for(let i=0;i<ret.contents.length;i++){
-      if (!ret.contents[i]) continue;
-      const subtree2 = i === 0 ? subtree : 0;
-      if (subtree2 > 0){
-        const c = await get_child_contents(ret.contents[i].id,subtree2-1,listOnly, db);
-        ret.contents[i].children = c[0];
-        ret.contents[i].childCount = c[1];
-      }else{
-        const c = await get_child_contents(ret.contents[i].id,0,listOnly, db);
-        ret.contents[i].children = c.length > 0 ? null : [];
-        ret.contents[i].childCount = c.length;
-      }
+  if (listOnly){
+    subtree = 0;
+  }
+  if (treeOnly){
+    ret.contents = ret.contents.length > 0 ? [ret.contents[0]] : [];
+  }
+  for(let i=0;i<ret.contents.length;i++){
+    if (!ret.contents[i]) continue;
+    const subtree2 = subtree; // i === 0 ? subtree : 0;
+    if (subtree2 > 0){
+      const c = await get_child_contents(ret.contents[i].id,subtree2-1,listOnly, db);
+      ret.contents[i].children = c[0];
+      ret.contents[i].childCount = c[1];
+    }else{
+      const c = await get_child_contents(ret.contents[i].id,0,listOnly, db);
+      ret.contents[i].children = c[1] > 0 ? null : [];
+      ret.contents[i].childCount = c[1];
     }
   }
   return ret;
@@ -192,7 +204,8 @@ export default async function thread(app, main, api, subdir, moduleName, setting
     const contentId = req.params.id;
     let subtree = utils.parseSafeInt(req.query?.subtree) || 0;
     const listOnly = req.query?.listOnly === '1';
-    
+    const treeOnly = req.query?.treeOnly === '1';
+
     // safety
     if (subtree < 0) {
       subtree = 0;
@@ -203,7 +216,7 @@ export default async function thread(app, main, api, subdir, moduleName, setting
 
     // データベースからスレッドの内容を取得
     const threadData = await database.transaction(async (tx) => {
-      return await get_thread_by_id(contentId,subtree,listOnly, tx);
+      return await get_thread_by_id(contentId,subtree,listOnly,treeOnly,10, tx);
     });
 
     if (!threadData){

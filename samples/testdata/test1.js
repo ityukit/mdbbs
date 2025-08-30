@@ -50,6 +50,10 @@ for(let i=0;i<50;i++){
     parent_id: -1,
     child_id: d[0].id
   });
+  await database('contents_tree').insert({
+    parent_id: -1,
+    child_id: d[0].id
+  });
 }
 // add Tags
 for(let i=0;i<10;i++){
@@ -226,6 +230,10 @@ for(let i=0;i<30;i++){
     parent_id: target1.id,
     child_id: d[0].id
   });
+  await database('contents_tree').insert({
+    parent_id: -1,
+    child_id: d[0].id
+  });
   target1 = d[0];
   let target2;
   for(let j=0;j<5;j++){
@@ -241,7 +249,15 @@ for(let i=0;i<30;i++){
         parent_id: target1.id,
         child_id: d2[0].id
       });
+      await database('contents_list').insert({
+        parent_id: -1,
+        child_id: d2[0].id
+      });
     }else{
+      await database('contents_tree').insert({
+        parent_id: -1,
+        child_id: d2[0].id
+      });
       await database('contents_list').insert({
         parent_id: target2.id,
         child_id: d2[0].id
@@ -262,7 +278,15 @@ for(let i=0;i<30;i++){
           parent_id: target2.id,
           child_id: d3[0].id
         });
+        await database('contents_list').insert({
+          parent_id: -1,
+          child_id: d3[0].id
+        });
       }else{
+        await database('contents_tree').insert({
+          parent_id: -1,
+          child_id: d3[0].id
+        });
         await database('contents_list').insert({
           parent_id: target3.id,
           child_id: d3[0].id
@@ -286,6 +310,10 @@ for(let i=0;i<30;i++){
     updated_user_id: data.user_id,
     created_user_id: data.user_id,
   }).returning('id');
+  await database('contents_tree').insert({
+    parent_id: -1,
+    child_id: d[0].id
+  });
   await database('contents_list').insert({
     parent_id: target1.id,
     child_id: d[0].id

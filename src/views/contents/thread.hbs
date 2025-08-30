@@ -129,9 +129,12 @@
       }
     }
   }
-  function loadThread(startContentsId,subtree, listOnly){
+  function loadThread(startContentsId,subtree, listOnly, treeOnly){
     $.ajax({
-      url: "{{baseUrl}}/api/contents/thread/"+startContentsId + "?" + (subtree > 0 ? "subtree=" + subtree : "") + "&" + (listOnly ? "listOnly=1" : "listOnly=0"),
+      url: "{{baseUrl}}/api/contents/thread/"+startContentsId 
+             + "?" + (subtree > 0 ? "subtree=" + subtree : "")
+             + "&" + (listOnly ? "listOnly=1" : "listOnly=0")
+             + "&" + (treeOnly ? "treeOnly=1" : "treeOnly=0"),
       type: "GET",
       dataType: "json",
       success: function(data) {
@@ -162,7 +165,7 @@
   function generateContentSub(area,contentsList,parentId) {
     if (contentsList === null){
       // not load
-      area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + parentId + ",1,false)'>{{ __ 'page.thread.omission' }}</a>"));
+      area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + parentId + ",1,false,true)'>{{ __ 'page.thread.omission' }}</a>"));
     }else if (contentsList.length === 0){
       // DO NOTHING
     }else{
@@ -171,10 +174,10 @@
         if (contentsList[i] === null || !contentsList[i].id){
           // not load
           if (contentsList[i] === null || !contentsList[i].omitCount) {
-            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,false)'>{{ __ 'page.thread.omission' }}</a>"));
+            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,false,false)'>{{ __ 'page.thread.omission' }}</a>"));
           }else{
             const omitCount = contentsList[i].omitCount;
-            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,false)'>" + format_string("{{ __ 'page.thread.omitCount' }}", omitCount) + "</a>"));
+            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,false,false)'>" + format_string("{{ __ 'page.thread.omitCount' }}", omitCount) + "</a>"));
           }
           if (i !== contentsList.length - 1){
             const areaChild = $("<div>").addClass("vtree-areaChild");
@@ -400,7 +403,7 @@
       ]
     })
     */
-    loadThread({{thread.root_contents_id}},0,false);
+    loadThread({{thread.root_contents_id}},0,true);
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
   });
