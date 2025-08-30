@@ -268,7 +268,7 @@ for(let i=0;i<30;i++){
     }
   }
 }
-console.log(target1)
+
 // test markdown
 {
   let d = await database('contents').insert({

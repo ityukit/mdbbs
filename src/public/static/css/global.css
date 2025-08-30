@@ -164,3 +164,19 @@ footer{
   text-decoration-style: wavy;
 }
 
+#contentArea table {
+border-collapse: collapse;
+}
+
+#contentArea table, td, th {
+border: 1px solid black;
+padding: 5px;
+}
+
+#contentArea table tr:nth-child(even) {
+background: #F9F9F9;
+}
+
+#contentArea table tr:nth-child(odd) {
+background: #FFFFFF;
+}

@@ -629,3 +629,41 @@ Underscores
 ```
 
 [![IMAGE ALT TEXT HERE](https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/YouTube_logo_2015.svg/1200px-YouTube_logo_2015.svg.png)](https://www.youtube.com/watch?v=ciawICBvQoE)
+
+# mathjax
+
+```
+Lift($$L$$) can be determined by Lift Coefficient ($$C_L$$) like the following
+equation.
+
+$$
+L = \frac{1}{2} \rho v^2 S C_L
+$$
+```
+
+Lift($$L$$) can be determined by Lift Coefficient ($$C_L$$) like the following
+equation.
+
+$$
+L = \frac{1}{2} \rho v^2 S C_L
+$$
+
+# ruby(simple)
+
+```
+｜禁書目録《インデックス》
+|禁書目録《インデックス》
+｜禁書目録(インデックス)
+|禁書目録(インデックス)
+禁書目録(インデックス)
+禁書目録|(インデックス)
+```
+
+｜禁書目録《インデックス》
+|禁書目録《インデックス》
+｜禁書目録(インデックス)
+|禁書目録(インデックス)
+禁書目録(インデックス)
+禁書目録|(インデックス)
+
+
