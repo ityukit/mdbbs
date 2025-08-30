@@ -46,6 +46,10 @@ for(let i=0;i<50;i++){
   data.contents.push({
     id: d[0].id
   });
+  await database('contents_list').insert({
+    parent_id: -1,
+    child_id: d[0].id
+  });
 }
 // add Tags
 for(let i=0;i<10;i++){

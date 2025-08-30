@@ -24,21 +24,21 @@ async function get_coutents_count(cid,db){
   return (await db.queryBuilder().withRecursive('t_contents_list', (qb) => {
     qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
       .from('contents_list')
-      .where({ parent_id: cid })
+      .where({ child_id: cid })
       .unionAll((qb) => {
         qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
           .from('t_contents_list')
           .join('contents_list', 't_contents_list.child_id', '=', 'contents_list.parent_id')
       });
     })
-    .count('t_contents_list.id as cnt').from('t_contents_list').first()).cnt + 1;
+    .count('t_contents_list.id as cnt').from('t_contents_list').first()).cnt;
 }
 async function get_contents(cid,listmax,db) {
   let ret = [];
   const currentList = await db.queryBuilder().withRecursive('t_contents_list', (qb) => {
     qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
       .from('contents_list')
-      .where({ parent_id: cid })
+      .where({ child_id: cid })
       .unionAll((qb) => {
         qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
           .from('t_contents_list')
@@ -59,7 +59,7 @@ async function get_contents(cid,listmax,db) {
         'contents.created_at',
         'contents.updated_at',
       ).from('t_contents_list')
-      .join('contents','t_contents_list.parent_id','=','contents.id')
+      .join('contents','t_contents_list.child_id','=','contents.id')
       .orderBy('contents.created_at','asc')
       .orderBy('contents.id','asc')
       .limit(listmax);
@@ -86,7 +86,7 @@ async function get_contents(cid,listmax,db) {
     const currentRList = await db.queryBuilder().withRecursive('t_contents_list', (qb) => {
       qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
         .from('contents_list')
-        .where({ parent_id: cid })
+        .where({ child_id: cid })
         .unionAll((qb) => {
           qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
             .from('t_contents_list')
@@ -106,30 +106,31 @@ async function get_contents(cid,listmax,db) {
           'contents.created_user_id',
           'contents.created_at',
           'contents.updated_at',
-          't_contents_list.parent_id'
+          't_contents_list.parent_id',
+          't_contents_list.child_id'
         ).from('t_contents_list')
         .join('contents','t_contents_list.child_id','=','contents.id')
         .orderBy('contents.created_at','desc')
         .orderBy('contents.id','desc')
         .limit(1);
     if (currentRList && currentRList.length > 0){
-      if (currentRList[0].parent_id !== currentList[currentList.length-1].id){
+      if (currentRList[0].child_id !== currentList[currentList.length-1].id){
         ret.push(null);
+        ret.push({
+          id: currentRList[0].id,
+          title: currentRList[0].title,
+          contents:  (await parser.parse(currentRList[0].parser, currentRList[0].contents)).value,
+          description: currentRList[0].description,
+          locked: currentRList[0].locked,
+          updated_user: await usermapping(currentRList[0].updated_user_id, db),
+          created_user: await usermapping(currentRList[0].created_user_id, db),
+          updated_at: currentRList[0].updated_at.toISOString(),
+          updated_at_str: settings.datetool.format(currentRList[0].updated_at),
+          created_at: currentRList[0].created_at.toISOString(),
+          created_at_str: settings.datetool.format(currentRList[0].created_at),
+          children: null,
+        });
       }
-      ret.push({
-        id: currentRList[0].id,
-        title: currentRList[0].title,
-        contents:  (await parser.parse(currentRList[0].parser, currentRList[0].contents)).value,
-        description: currentRList[0].description,
-        locked: currentRList[0].locked,
-        updated_user: await usermapping(currentRList[0].updated_user_id, db),
-        created_user: await usermapping(currentRList[0].created_user_id, db),
-        updated_at: currentRList[0].updated_at.toISOString(),
-        updated_at_str: settings.datetool.format(currentRList[0].updated_at),
-        created_at: currentRList[0].created_at.toISOString(),
-        created_at_str: settings.datetool.format(currentRList[0].created_at),
-        children: null,
-      });
     }
   }
   return ret;
