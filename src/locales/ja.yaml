@@ -49,6 +49,10 @@ page:
     pagination:
       previous: "前のページ"
       next: "次のページ"
+  thread:
+    noThreads: "スレッドが見つかりませんでした"
+    breadcrumb:
+      dashboard: "ダッシュボード"
 
 views:
   navigator:
@@ -60,3 +64,16 @@ views:
       login: "ログイン"
       logout: "ログアウト"
       loginId: "ログインID"
+    lang:
+      dropdown: "言語"
+      change: "言語切り替え"
+      current: "現在の言語"
+      close: "変更せずに閉じる"
+      set: "変更(再読み込みします)"
+      select: "言語を選択"
+      setError: "言語の変更に失敗しました"
+      auto: "自動"
+
+lang:
+  current: "日本語"
+

@@ -34,6 +34,9 @@
               {{else}}
               <li><a class="dropdown-item" href="{{baseUrl}}/auth/login">{{ __ 'views.navigator.account.login' }}</a></li>
               {{/if}}
+              <li><hr class="dropdown-divider"></li>
+              <li class="dropdown-item">{{ __ 'views.navigator.lang.dropdown' }}:{{ locale_str }}</li>
+              <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#langChange">{{ __ 'views.navigator.lang.change' }}</a></li>
             </ul>
           </li>
         </ul>
@@ -48,6 +51,58 @@
     </div>
   </div>
 </nav>
+<!-- Modal -->
+<script>
+  function setLanguage() {
+    const select = document.querySelector('#langChange .form-select');
+    const selectedLang = select.value;
+    if (selectedLang === '{{locale}}') {
+      const myModal = bootstrap.Modal.getInstance(document.getElementById('langChange'));
+      myModal.hide();
+      return;
+    }
+    $.ajax({
+      url: '{{baseUrl}}/meta/setLang',
+      method: 'POST',
+      data:{
+        lang: selectedLang,
+        _csrf: '{{_csrf}}'
+      },
+      success: function(response) {
+        location.reload();
+      },
+      error: function(xhr) {
+        alert('{{ __ "views.navigator.lang.setError" }}');
+      }
+    });
+  }
+</script>
+<div class="modal fade" id="langChange" data-bs-keyboard="false" tabindex="-1" aria-labelledby="langChangedropLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="langChangeLabel">{{ __ 'views.navigator.lang.change' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h3>{{ __ 'views.navigator.lang.current' }}:{{ locale_str }}</h3>
+        <hr>
+        <h4>{{ __ 'views.navigator.lang.select' }}</h4>
+        <select class="form-select" aria-label="langSelect">
+          <option value="{{ locale }}" selected>{{ locale_str }}</option>
+          <option value="">{{ __ "views.navigator.lang.auto" }}</option>
+          {{#each locales_all as |locale|}}
+            <option value="{{locale.code}}">{{locale.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'views.navigator.lang.close' }}</button>
+        <button type="button" class="btn btn-primary" onclick="setLanguage()">{{ __ 'views.navigator.lang.set' }}</button>
+      </div>
+    </div>
+  </div>
+</div>
 <header>
   <div class="container-fluid text-center">
     <div class="row">

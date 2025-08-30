@@ -1,0 +1,55 @@
+{{> header }}
+{{> topNavigator }}
+
+<script>
+  function escape_html (string) {
+    if(typeof string !== 'string') {
+      return string;
+    }
+    return string.replace(/[&'`"<>]/g, function(match) {
+      return {
+        '&': '&amp;',
+        "'": '&#x27;',
+        '`': '&#x60;',
+        '"': '&quot;',
+        '<': '&lt;',
+        '>': '&gt;',
+      }[match]
+    });
+  }
+
+  addEventListener("load", (event) => {
+  });
+</script>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-lg-8">
+      <nav id="breadcrumb" aria-label="breadcrumb">
+        <ol id="breadcrumbList" class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{{baseUrl}}/contents">{{ __ 'page.thread.breadcrumb.dashboard' }}</a></li>
+          {{#each thread.dir_ids}}
+            <li class="breadcrumb-item"><a href="{{@root.baseUrl}}/contents?treeId={{this}}">{{ lookup @root.thread.dir_names @index }}</a></li>
+          {{/each}}
+        </ol>
+      </nav>
+    </div>
+    <div class="col-lg-4 text-end">
+      <div id="tags">
+        {{#each thread.tags}}
+          <span class="badge text-bg-light" data-tag-id="{{this.id}}">{{this.display_name}}</span> 
+        {{/each}}
+      </div>
+    </div>
+    <section id="main_section">
+      <div class="row">
+        <div class="col-md-9" id="main">
+          <div id="contentArea">Contents</div>
+        </div>
+        <div class="col-md-3 d-none d-md-block" id="mainNavi">Navi</div>
+      </div>
+    </section>
+  </div> <!-- row -->
+</div>
+
+{{> footer }}

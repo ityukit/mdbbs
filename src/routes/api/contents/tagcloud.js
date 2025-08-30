@@ -18,7 +18,6 @@ async function get_tags(id, nodeWord, db) {
                    .join('dirs', 'dirs.id', '=', 'dirtree.child_id')
                    .where('dirs.display_name', 'like', `%${nodeWord}%`)
     }
-    console.log(tx.toString())
   }else{
     tx = db.select('tags.tag_id', 'tags.display_name').count('tags.tag_id as cnt')
                    .from('dirs')
