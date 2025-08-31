@@ -65,7 +65,7 @@ async function get_contents(cid,listmax,db) {
       .orderBy('contents.id','asc')
       .limit(listmax);
   if (!currentList) return null;
-  console.log("currentList:", currentList);
+  //console.log("currentList:", currentList);
   for(const c of currentList){
     ret.push({
       id: c.id,
@@ -114,10 +114,12 @@ async function get_contents(cid,listmax,db) {
         .join('contents','t_contents_list.child_id','=','contents.id')
         .orderBy('contents.created_at','desc')
         .orderBy('contents.id','desc')
-        .limit(1);
+        .limit(2);
     if (currentRList && currentRList.length > 0){
-      if (currentRList[0].child_id !== currentList[currentList.length-1].id){
-        ret.push(null);
+      if (currentRList[0].id !== currentList[currentList.length-1].id){
+        if (currentRList.length > 1 && currentRList[1].id !== currentList[currentList.length-1].id){
+          ret.push(null);
+        }
         ret.push({
           id: currentRList[0].id,
           title: currentRList[0].title,
@@ -135,7 +137,7 @@ async function get_contents(cid,listmax,db) {
       }
     }
   }
-  console.log("ret:", cid,listmax,ret);
+  //console.log("ret:", cid,listmax,ret);
   return ret;
 }
 
@@ -144,7 +146,7 @@ async function get_child_contents(cid, subtree,listOnly, db) {
   const childs = await db.select('contents_tree.child_id').from('contents_tree').where({ parent_id: cid });
   if (childs.length < 1) return [[],0];
   for(const c of childs) {
-    const childContents = await get_contents(c.child_id, 5, db);
+    const childContents = await get_contents(c.child_id, 2, db);
     if (childContents.length > 0) {
       ret.push(...childContents);
     }

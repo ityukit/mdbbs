@@ -61,46 +61,71 @@
   // data
   //   |- contents[]
   function insertData(contentsId,data,addData){
+    // 現在の階層に追加するか？
+    let currentId = null;
     for(let i=0;i<data.contents.length;i++){
       if (data.contents[i] === null) continue;
       if (data.contents[i].id === contentsId){
-        let newContents = [];
-        for(let j=0;j<i;j++){
-          newContents.push(data.contents[j]);
+        currentId = i;
+        break;
+      }
+    }
+    if (currentId !== null) {
+      // 現在の階層に追加する
+      data.contents[currentId] = addData[0];
+      let addDataCount = 0;
+      for(let i=1;i<addData.length;i++){
+        if (addData[i] === null){
+          // nullは書く
+          data.contents.splice(currentId+i, 0, addData[i]);
+          addDataCount++;
+        }else{
+          let dataId = null;
+          for(let j=i;j<data.contents.length;j++){
+            if (data.contents[j] === null){addHaveNull = true;continue;}
+            if (data.contents[j].id === addData[i].id){
+              // 既に存在する
+              dataId = j;
+              break;
+            }
+          }
+          if (dataId !== null){
+            // 既に存在する
+            data.contents[dataId] = addData[i];
+          }else{
+            data.contents.splice(currentId+i, 0, addData[i]);
+            addDataCount++;
+          }
         }
-        newContents.push(...addData);
-        // null skip
-        let n = i+1;
-        for(let j=i+1;j<data.contents.length;j++){
-          if (data.contents[j] === null) continue;
-          if (!data.contents[j].id) continue;
-          n = j;
-          break;
-        }
-        // 同じ番号が有ればスキップ
-        let skip = n;
-        const skipchk = addData[addData.length-1];
-        for(let j=n;j<data.contents.length;j++){
-          if (data.contents[j] === null) continue;
-          if (!data.contents[j].id) continue;
-          if (skipchk.id === data.contents[j].id){
-            skip = j+1;
+      }
+      // NULLを削除する
+      if (addDataCount > 0){
+        for(let i=data.contents.length-1;i>currentId+addDataCount;i--){
+          if (data.contents[i] === null ||
+              data.contents[i].id === undefined ||
+              data.contents[i].id === null) {
+            data.contents.splice(i, 1);
             break;
           }
         }
-        for(let j=skip;j<data.contents.length;j++){
-          newContents.push(data.contents[j]);
-        }
-        data.contents = newContents;
-        return true;
       }
-      if (data.contents[i] && data.contents[i].children){
-        const d = {
-          contents: data.contents[i].children
-        };
-        if (insertData(contentsId,d,addData)){
-          data.contents[i].children = d.contents;
-          return true;
+      return true;
+    }else{
+      // 子要素を探してみる
+      for(let i=0;i<data.contents.length;i++){
+        if (data.contents[i] === null) continue;
+        if (!data.contents[i].id) continue;
+        if (data.contents[i].children === undefined){
+          data.contents[i].children = null;
+        }
+        if (data.contents[i].children !== null){
+          const d = {
+            contents: data.contents[i].children
+          };
+          if (insertData(contentsId,d,addData)){
+            data.contents[i].children = d.contents;
+            return true;
+          }
         }
       }
     }
