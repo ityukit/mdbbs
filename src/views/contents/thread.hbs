@@ -63,22 +63,29 @@
   function insertData(contentsId,data,addData){
     // 現在の階層に追加するか？
     let currentId = null;
-    for(let i=0;i<data.contents.length;i++){
-      if (data.contents[i] === null) continue;
-      if (data.contents[i].id === contentsId){
-        currentId = i;
-        break;
+    if (data.contents === undefined || data.contents === null){
+      // DO NOTHING
+    }else{
+      for(let i=0;i<data.contents.length;i++){
+        if (data.contents[i] === null) continue;
+        if (data.contents[i].id === contentsId){
+          currentId = i;
+          break;
+        }
       }
     }
     if (currentId !== null) {
       // 現在の階層に追加する
-      data.contents[currentId] = addData[0];
       let addDataCount = 0;
-      for(let i=1;i<addData.length;i++){
+      for(let i=0;i<addData.length;i++){
         if (addData[i] === null){
           // nullは書く
-          data.contents.splice(currentId+i, 0, addData[i]);
-          addDataCount++;
+          if (data.contents[currentId+i] === null){
+            data.contents[currentId+i] = addData[i];
+          }else{
+            data.contents.splice(currentId+i, 0, addData[i]);
+            addDataCount++;
+          }
         }else{
           let dataId = null;
           for(let j=i;j<data.contents.length;j++){
@@ -91,7 +98,22 @@
           }
           if (dataId !== null){
             // 既に存在する
+            const existingData = JSON.parse(JSON.stringify(data.contents[dataId]));
             data.contents[dataId] = addData[i];
+            if (existingData.children !== undefined && existingData.children !== null){
+              if (addData[i].children !== undefined && addData[i].children !== null){
+                // どっちも読み込み済み……
+                const d = {
+                  contents: existingData.children
+                };
+                if (insertData(contentsId,d,addData[i].children)){
+                  data.contents[dataId].children = d.contents;
+                }
+              }else{
+                // 現状のものを保持
+                data.contents[dataId].children = existingData.children;
+              }
+            }
           }else{
             data.contents.splice(currentId+i, 0, addData[i]);
             addDataCount++;
@@ -112,19 +134,23 @@
       return true;
     }else{
       // 子要素を探してみる
-      for(let i=0;i<data.contents.length;i++){
-        if (data.contents[i] === null) continue;
-        if (!data.contents[i].id) continue;
-        if (data.contents[i].children === undefined){
-          data.contents[i].children = null;
-        }
-        if (data.contents[i].children !== null){
-          const d = {
-            contents: data.contents[i].children
-          };
-          if (insertData(contentsId,d,addData)){
-            data.contents[i].children = d.contents;
-            return true;
+      if (data.contents === undefined || data.contents === null){
+        // DO NOTHING
+      }else{
+        for(let i=0;i<data.contents.length;i++){
+          if (data.contents[i] === null) continue;
+          if (!data.contents[i].id) continue;
+          if (data.contents[i].children === undefined){
+            data.contents[i].children = null;
+          }
+          if (data.contents[i].children !== null){
+            const d = {
+              contents: data.contents[i].children
+            };
+            if (insertData(contentsId,d,addData)){
+              data.contents[i].children = d.contents;
+              return true;
+            }
           }
         }
       }
@@ -199,10 +225,10 @@
         if (contentsList[i] === null || !contentsList[i].id){
           // not load
           if (contentsList[i] === null || !contentsList[i].omitCount) {
-            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,false,false)'>{{ __ 'page.thread.omission' }}</a>"));
+            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,true,false)'>{{ __ 'page.thread.omission' }}</a>"));
           }else{
             const omitCount = contentsList[i].omitCount;
-            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,false,false)'>" + format_string("{{ __ 'page.thread.omitCount' }}", omitCount) + "</a>"));
+            area.append($("<div>").addClass("wave-comment").html("<a class='omitLoad' onclick='loadThread(" + lastLoadedId + ",0,true,false)'>" + format_string("{{ __ 'page.thread.omitCount' }}", omitCount) + "</a>"));
           }
           if (i !== contentsList.length - 1){
             const areaChild = $("<div>").addClass("vtree-areaChild");

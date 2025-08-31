@@ -146,7 +146,7 @@ async function get_child_contents(cid, subtree,listOnly, db) {
   const childs = await db.select('contents_tree.child_id').from('contents_tree').where({ parent_id: cid });
   if (childs.length < 1) return [[],0];
   for(const c of childs) {
-    const childContents = await get_contents(c.child_id, 2, db);
+    const childContents = await get_contents(c.child_id, 3, db);
     if (childContents.length > 0) {
       ret.push(...childContents);
     }
