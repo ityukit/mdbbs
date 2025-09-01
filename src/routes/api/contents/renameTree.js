@@ -42,7 +42,7 @@ async function rename_tree(dir_id, name, description, req, res, tx) {
 
   // OK!
   return res.json({
-    message: 'dir added successfully'
+    message: 'dir rename successfully'
   });
 }
 
