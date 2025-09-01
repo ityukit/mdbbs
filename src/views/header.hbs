@@ -45,6 +45,57 @@
   {{custom_header_tag}}
   {{/if}}
 
+<!-- my tools -->
+<script>
+  function escape_html (string) {
+    if(typeof string !== 'string') {
+      return string;
+    }
+    return string.replace(/[&'`"<>]/g, function(match) {
+      return {
+        '&': '&amp;',
+        "'": '&#x27;',
+        '`': '&#x60;',
+        '"': '&quot;',
+        '<': '&lt;',
+        '>': '&gt;',
+      }[match]
+    });
+  }
+  function unescape_html (string) {
+    if(typeof string !== 'string') {
+      return string;
+    }
+    return string.replace(/&(#(?:x[0-9a-fA-F]+|\d+)|[a-zA-Z]+);/g, function(match, entity) {
+      if (entity[0] === '#') {
+        const code = entity[1] === 'x' || entity[1] === 'X' ? parseInt(entity.substr(2), 16) : parseInt(entity.substr(1), 10);
+        if (!isNaN(code)) {
+          return String.fromCharCode(code);
+        }
+      } else {
+        const entities = {
+          amp: '&',
+          apos: "'",
+          lt: '<',
+          gt: '>',
+          quot: '"',
+        };
+        if (entities.hasOwnProperty(entity)) {
+          return entities[entity];
+        }
+      }
+      return match;
+    });
+  }
+  function format_string() {
+    var args = arguments;
+    return args[0].replace(/{(\d+)}/g, function(match, number) {
+      number = parseInt(number,10);
+      return args[number+1] === undefined ? match : args[number+1];
+    });
+  };
+</script>
+
 </head>
 
 <body id="page-top">

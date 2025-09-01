@@ -40,6 +40,36 @@ page:
       search: Tree検索
       searchButton: 実行
       searchWord: "検索ワード"
+      add: "追加"
+      move: "移動"
+      rename: "名前変更"
+      modalClose: "閉じる"
+      root: "(ルート)"
+      doAdd: "追加"
+      doMove: "移動"
+      doRename: "名前変更"
+      addCurrent: "{0} の下に追加"
+      addCurrentDesc: "Tree構造 [{0}] の下にアイテムを追加します"
+      addInfo: "注意：一度追加すると削除できません"
+      addName: "名前"
+      addDesc: "説明"
+      addEssDesc: "* マークの内容は必須です"
+      adding: "追加中..."
+      addNameError: "名前に「 > 」を含めることはできません"
+      addDupError: "名前が重複しています"
+
+      renameNotSelectError: "アイテムが選択されていません"
+      renameNameError: "名前に「 > 」を含めることはできません"
+      renameCurrent: "{0} の下に名前変更"
+      renameCurrentDesc: "Tree構造 [{0}] のアイテムを名前変更します"
+      renameNameCurrent: "今の名前"
+      renameName: "新しい名前"
+      renameDesc: "説明"
+      renameEssDesc: "* マークの内容は必須です"
+      renaming: "名前変更中..."
+      renameDataLoading: "読み込み中..."
+      renameDupError: "名前が重複しています"
+
     tagCloud:
       noTags: "タグが見つかりませんでした"
     breadcrumb:

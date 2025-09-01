@@ -515,9 +515,263 @@
     $("#tagcloud")[0].addEventListener("click", clickTagCloud);
 
     $("#tree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
+
+    $("#treeAdd").on("show.bs.modal", function() {
+      let name = "{{ __ 'page.contents.tree.root' }}";
+      if ($("#tree").tree('getSelectedNode')) {
+        name = $("#tree").tree('getSelectedNode').name;
+      }
+      $("#treeAddTarget").text(format_string("{{ __ 'page.contents.tree.addCurrent' }}", name));
+      let descName = "{{ __ 'page.contents.tree.root' }}";
+      if ($("#tree").tree('getSelectedNode')) {
+        const tree = [];
+        let node = $("#tree").tree('getSelectedNode');
+        while (node.parent) {
+          tree.unshift(node.name);
+          node = node.parent;
+        }
+        descName = tree.join(" / ");
+      }
+      $("#treeAddDescription").text(format_string("{{ __ 'page.contents.tree.addCurrentDesc' }}", descName));
+      $("#treeAddCurrent").text(descName + " /");
+      $("#treeAddSubmit").prop("disabled", false);
+      $("#treeDoAddText").removeClass("d-none");
+      $("#treeDoAddSpinner").addClass("d-none");
+      $("#treeAddFormName").val("");
+      $("#treeAddFormDesc").val("");
+    });
+    $("#treeRename").on("show.bs.modal", function() {
+      let name = "{{ __ 'page.contents.tree.root' }}";
+      if ($("#tree").tree('getSelectedNode')) {
+        name = $("#tree").tree('getSelectedNode').name;
+      }
+      $("#treeAddTarget").text(format_string("{{ __ 'page.contents.tree.addCurrent' }}", name));
+      let descName = "{{ __ 'page.contents.tree.root' }}";
+      if ($("#tree").tree('getSelectedNode')) {
+        const tree = [];
+        let node = $("#tree").tree('getSelectedNode');
+        while (node.parent) {
+          tree.unshift(node.name);
+          node = node.parent;
+        }
+        descName = tree.join(" / ");
+      }
+      $("#treeRenameDescription").text(format_string("{{ __ 'page.contents.tree.renameCurrentDesc' }}", descName));
+      $("#treeRenameCurrent").text(descName + " /");
+      $("#treeRenameSubmit").prop("disabled", false);
+      $("#treeDoRenameText").removeClass("d-none");
+      $("#treeDoRenameSpinner").addClass("d-none");
+      $("#treeRenameFormName").val("");
+      $("#treeRenameFormDesc").val("");
+      $("#treeRenameBodyLoading").removeClass("d-none");
+      $("#treeRenameBody").addClass("d-none");
+    });
+    $("#treeRename").on("shown.bs.modal", function() {
+      if (!$("#tree").tree('getSelectedNode')){
+        alert("{{ __ 'page.contents.tree.renameNotSelectError' }}")
+        $("#treeRename").modal("hide");
+        return;
+      }
+      $.ajax({
+        url: "{{baseUrl}}/api/meta/treeInfo",
+        method: "GET",
+        data: {
+          dir_id: $("#tree").tree('getSelectedNode') ? $("#tree").tree('getSelectedNode').id : ''
+        },
+        success: function(data) {
+          if (data && data.error) {
+            alert("Error: " + data.error);
+            $("#treeRename").modal("hide");
+          }else{
+            $("#treeRenameCurrent").val(data.display_name);
+            $("#treeRenameFormName").val(data.display_name);
+            $("#treeRenameFormDesc").val(data.description);
+            $("#treeRenameBodyLoading").addClass("d-none");
+            $("#treeRenameBody").removeClass("d-none");
+          }
+        },
+        error: function(xhr, status, error) {
+          alert("Error: " + error);
+          $("#treeRename").modal("hide");
+        }
+      });
+    });
   });
+
+  function addTreeNode(){
+    const name = $("#treeAddFormName").val();
+    if (name.includes(' > ')) {
+      alert("{{{ __ 'page.contents.tree.addNameError' }}}");
+      return false;
+    }
+    $("#treeAddSubmit").prop("disabled", true);
+    $("#treeDoAddText").addClass("d-none");
+    $("#treeDoAddSpinner").removeClass("d-none");
+    const parent = $("#tree").tree('getSelectedNode');
+    let parentId = "";
+    if (parent) {
+      parentId = parent.id;
+    }
+    $.ajax({
+      url: "{{baseUrl}}/api/contents/addTree",
+      type: "POST",
+      data: {
+        name: $("#treeAddFormName").val(),
+        description: $("#treeAddFormDesc").val(),
+        parent: parentId,
+        _csrf: "{{ _csrf }}"
+      },
+      success: function(data) {
+        if (data && data.error) {
+          alert("Error: " + data.error);
+        }else{
+          $("#treeAdd").modal("hide");
+          $("#tree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
+        }
+      },
+      error: function(xhr, status, error) {
+        alert("Error: " + error);
+      },
+      complete: function() {
+        $("#treeAddSubmit").prop("disabled", false);
+        $("#treeDoAddText").removeClass("d-none");
+        $("#treeDoAddSpinner").addClass("d-none");
+      }
+    });
+    return false;
+  }
+  function renameTreeNode(){
+    const name = $("#treeRenameFormName").val();
+    if (name.includes(' > ')) {
+      alert("{{{ __ 'page.contents.tree.renameNameError' }}}");
+      return false;
+    }
+    $("#treeRenameSubmit").prop("disabled", true);
+    $("#treeDoRenameText").addClass("d-none");
+    $("#treeDoRenameSpinner").removeClass("d-none");
+    $.ajax({
+      url: "{{baseUrl}}/api/contents/renameTree",
+      type: "POST",
+      data: {
+        dir_id: $("#tree").tree('getSelectedNode') ? $("#tree").tree('getSelectedNode').id : '',
+        name: $("#treeRenameFormName").val(),
+        description: $("#treeRenameFormDesc").val(),
+        _csrf: "{{ _csrf }}"
+      },
+      success: function(data) {
+        if (data && data.error) {
+          alert("Error: " + data.error);
+        }else{
+          $("#treeRename").modal("hide");
+          $("#tree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
+        }
+      },
+      error: function(xhr, status, error) {
+        alert("Error: " + error);
+      },
+      complete: function() {
+        $("#treeRenameSubmit").prop("disabled", false);
+        $("#treeDoRenameText").removeClass("d-none");
+        $("#treeDoRenameSpinner").addClass("d-none");
+      }
+    });
+  }
 </script>
 
+<!-- modal -->
+<!-- tree add -->
+<div class="modal fade modal-xl" id="treeAdd" data-bs-keyboard="false" tabindex="-1" aria-labelledby="treeAdddropLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="treeAddLabel">{{ __ 'page.contents.tree.add' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <h3 id="treeAddTarget"></h3>
+          <p id="treeAddDescription"></p>
+          <hr>
+          <div class="text-bg-danger text-center">{{ __ 'page.contents.tree.addInfo' }}</div>
+          <br>
+          <div>
+            <label for="treeAddFormName" class="form-label">{{ __ 'page.contents.tree.addName' }} *</label>
+            <div class="input-group">
+              <span class="input-group-text" id="treeAddCurrent">{{ __ 'page.contents.tree.addName' }}</span>
+              <input type="text" class="form-control" id="treeAddFormName" required>
+            </div>
+            <label for="treeAddFormDesc" class="form-label">{{ __ 'page.contents.tree.addDesc' }}</label>
+            <div class="input-group">
+              <textarea class="form-control" id="treeAddFormDesc"></textarea>
+            </div>
+          </div>
+          <div class="text-end">{{ __ 'page.contents.tree.addEssDesc' }}</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.tree.modalClose' }}</button>
+            <button type="button" class="btn btn-primary" id="treeAddSubmit" onclick="return addTreeNode();">
+              <span id="treeDoAddText">{{ __ 'page.contents.tree.doAdd' }}</span>
+              <span id="treeDoAddSpinner" class="d-none">
+                <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                {{ __ 'page.contents.tree.adding' }}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- tree move -->
+<!-- tree rename -->
+<div class="modal fade modal-xl" id="treeRename" data-bs-keyboard="false" tabindex="-1" aria-labelledby="treeRenameLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="treeRenameLabel">{{ __ 'page.contents.tree.rename' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <h3 id="treeRenameTarget"></h3>
+          <p id="treeRenameDescription"></p>
+          <hr>
+          <div id="treeRenameBodyLoading" class="d-flex align-items-center">
+            <div class="spinner-border" role="status"></div>
+            &nbsp; &nbsp;
+            {{ __ 'page.contents.tree.renameDataLoading' }}
+          </div>
+          <div id="treeRenameBody">
+            <label for="treeRenameFormName" class="form-label">{{ __ 'page.contents.tree.renameNameCurrent' }}</label>
+            <div class="input-group">
+              <input type="text" class="form-control" id="treeRenameCurrent" disabled readonly>
+            </div>
+            <label for="treeRenameFormName" class="form-label">{{ __ 'page.contents.tree.renameName' }} *</label>
+            <div class="input-group">
+              <input type="text" class="form-control" id="treeRenameFormName" required>
+            </div>
+            <label for="treeRenameFormDesc" class="form-label">{{ __ 'page.contents.tree.renameDesc' }}</label>
+            <div class="input-group">
+              <textarea class="form-control" id="treeRenameFormDesc"></textarea>
+            </div>
+          </div>
+          <div class="text-end">{{ __ 'page.contents.tree.renameEssDesc' }}</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.tree.modalClose' }}</button>
+            <button type="button" class="btn btn-primary" id="treeRenameSubmit" onclick="return renameTreeNode();">
+              <span id="treeDoRenameText">{{ __ 'page.contents.tree.doRename' }}</span>
+              <span id="treeDoRenameSpinner" class="d-none">
+                <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                {{ __ 'page.contents.tree.renaming' }}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- main -->
 <div class="container-fluid">
   <div class="row">
     <div class="col-md-2 leftmenu">
@@ -536,6 +790,11 @@
           <span class="">{{ __ 'page.contents.tree.searchWord' }}</span>:<span id="currentTreeKeywordText"></span>
         </div>
         <div id="tree" data-url="{{baseUrl}}/api/contents/tree"></div>
+        <div id="treeControl" class="text-end">
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeAdd">{{ __ 'page.contents.tree.add'}}</button>
+          <!-- <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeMove">{{ __ 'page.contents.tree.move'}}</button> -->
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeRename">{{ __ 'page.contents.tree.rename'}}</button>
+        </div>
       </div>
     </div>
     <div class="col-md-10">

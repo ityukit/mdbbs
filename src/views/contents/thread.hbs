@@ -2,29 +2,6 @@
 {{> topNavigator }}
 
 <script>
-  function escape_html (string) {
-    if(typeof string !== 'string') {
-      return string;
-    }
-    return string.replace(/[&'`"<>]/g, function(match) {
-      return {
-        '&': '&amp;',
-        "'": '&#x27;',
-        '`': '&#x60;',
-        '"': '&quot;',
-        '<': '&lt;',
-        '>': '&gt;',
-      }[match]
-    });
-  }
-  function format_string() {
-    var args = arguments;
-    return args[0].replace(/{(\d+)}/g, function(match, number) {
-      number = parseInt(number,10);
-      return args[number+1] === undefined ? match : args[number+1];
-    });
-  };
-
   function generateContentOnce(data) {
     return `
         <div class="container-fluid border rounded shadow">
