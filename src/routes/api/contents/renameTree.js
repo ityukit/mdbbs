@@ -8,27 +8,29 @@ async function rename_tree(dir_id, name, description, req, res, tx) {
   if (chk1.length === 0) {
     return res.status(404).json({ error: 'directory not found' });
   }
+  const id = chk1[0].id;
   // get parent id
-  const chk2 = await tx.select('dirs.id')
-                       .from('dirs')
-                       .join('dirtree', 'dirtree.parent_id', 'dirs.id')
-                       .where('dirtree.child_id', chk1[0].id);
+  const chk2 = await tx.select('dirtree.parent_id')
+                       .from('dirtree')
+                       .where('dirtree.child_id', id);
   if (chk2.length === 0) {
-    return res.status(404).json({ error: 'directory not found' });
+    return res.status(404).json({ error: 'directory not found(broken)' });
   }
+  const parentId = chk2[0].parent_id;
   // dir's name
   const chk = await tx.select('dirs.id')
                       .from('dirs')
                       .join('dirtree', 'dirtree.child_id', 'dirs.id')
-                      .where('dirtree.parent_id', chk2[0].id)
+                      .where('dirtree.parent_id', parentId)
                       .where('dirs.display_name', name);
   if (chk.length > 0) {
-    if (chk[0].id !== chk1[0].id) {
+    if (chk.length > 1 || chk[0].id !== id) {
       return res.json({
         error: req.__('page.contents.tree.renameDupError'),
       });
     }
   }
+  console.log(chk,parentId,name,id)
 
   await tx('dirs')
     .where({ id: chk1[0].id })
