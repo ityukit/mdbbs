@@ -565,6 +565,13 @@
       function(event) {
         contentsPage = 0;
         loadTagCloud(false);
+        if ($('#tree').tree('getSelectedNode')) {
+          $('#treeMoveButton').prop('disabled', false);
+          $('#treeRenameButton').prop('disabled', false);
+        } else {
+          $('#treeMoveButton').prop('disabled', true);
+          $('#treeRenameButton').prop('disabled', true);
+        }
       }
     );
     $("#tree").on(
@@ -967,8 +974,8 @@
         <div id="tree" data-url="{{baseUrl}}/api/contents/tree"></div>
         <div id="treeControl" class="text-end">
           <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeAdd">{{ __ 'page.contents.tree.add'}}</button>
-          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeMove">{{ __ 'page.contents.tree.move'}}</button>
-          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeRename">{{ __ 'page.contents.tree.rename'}}</button>
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeMove" id="treeMoveButton">{{ __ 'page.contents.tree.move'}}</button>
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeRename" id="treeRenameButton">{{ __ 'page.contents.tree.rename'}}</button>
         </div>
       </div>
     </div>
