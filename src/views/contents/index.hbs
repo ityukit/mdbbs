@@ -27,6 +27,10 @@
         ${description}
     `;
   }
+  function threadMoveStart(id){
+    $('#threadMove').modal('show');
+  }
+
   function generateContentOnce(data) {
       const breadcrumb = [];
       for(let i=0;i<data.contents.dir_ids.length;i++){
@@ -53,14 +57,25 @@
       return `
           <div class="container border rounded shadow">
             <div class="row">
-              <div class="col-9 dfs-7">
+              <div class="col-9 contents-index-thread-header">
+                <div class="dropdown contents-index-thread-navbar-nav">
+                  <button class="btn dropdown-toggle contents-index-thread-navbar-button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="material-icons">menu</span>
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" onclick="threadMoveStart('${data.id}')">{{ __ "page.contents.thread.menu.move" }}</a></li>
+                    <li><a class="dropdown-item" onclick="threadRenameStart('${data.id}')">{{ __ "page.contents.thread.menu.rename" }}</a></li>
+                    <li><a class="dropdown-item" onclick="threadDeleteStart('${data.id}')">{{ __ "page.contents.thread.menu.delete" }}</a></li>
+                  </ul>
+                </div>
+                &nbsp;
                 <nav aria-label="breadcrumb">
                   <ol class="breadcrumb">
                     ${breadcrumb.map(item => item.prop('outerHTML')).join('')}
                   </ol>
                 </nav>
               </div>
-              <div class="col-3 dfs-7 text-end">
+              <div class="col-3 text-end">
                 <div class="d-inline">
                   ${tags.map(item => item.prop('outerHTML')).join('')}
                 </div>
@@ -952,6 +967,7 @@
     </div>
   </div>
 </div>
+{{> contents/threadMenuModal }}
 
 <!-- main -->
 <div class="container-fluid">

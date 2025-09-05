@@ -180,3 +180,30 @@ background: #F9F9F9;
 #contentArea table tr:nth-child(odd) {
 background: #FFFFFF;
 }
+
+.contents-index-thread-header {
+  display: flex;
+  /* font-size: 0.6rem; */
+}
+.contents-index-thread-navbar-nav {
+  padding-top: 1px;
+  align-items: start;
+}
+.contents-index-thread-navbar {
+  padding: 0px;
+}
+.contents-index-thread-navbar-button {
+  margin: 0px;
+  padding: 0px;
+  line-height: 0.6;
+}
+.contents-index-thread-navbar-button::after {
+  display: none; 
+}
+.contents-index-thread-navbar-button .navbar-toggler-icon {
+  padding: 0px;
+  margin: 0px;
+  font-size: 0.6rem; /* フォントサイズを小さくする */
+  height: 1rem; /* アイコンの高さを小さくする */
+  width: 1rem; /* アイコンの幅を小さくする */
+}
