@@ -486,6 +486,67 @@
     breadcrumbList.append(ary);
   }
 
+  function chkStrTreeMoveDirectory(){
+    let chk = false;
+    let str = "{{ __ 'page.contents.tree.moveRootError' }}";
+    const selected = $('#tree').tree('getSelectedNode');
+    const target = $('#treeMoveTree').tree('getSelectedNode');
+    if (!selected) {
+      str = "{{ __ 'page.contents.tree.moveNotSelectError' }}";
+    } else if (!target) {
+      let node = $('#treeMoveTree').tree('getTree');
+      chk = true;
+      for(const child of node.children) {
+        if (child.name === selected.name) {
+          str = format_string("{{ __ 'page.contents.tree.moveDupError' }}", "{{ __ 'page.contents.tree.root' }}");
+          chk = false;
+        }
+      }
+      if (chk){
+        str = format_string("{{ __ 'page.contents.tree.moveNext' }}", "{{ __ 'page.contents.tree.root' }}");
+      }
+    } else if (selected && target) {
+      if (selected.id === target.id) {
+        str = "{{ __ 'page.contents.tree.moveToSelfError' }}";
+      } else if (selected.parent &&  selected.parent.id === target.id) {
+        str = "{{ __ 'page.contents.tree.moveCurrentError' }}";
+      } else {
+        let node = target;
+        chk = true;
+        const tree = [];
+        while (node.parent) {
+          if (node.id === selected.id) {
+            str = "{{ __ 'page.contents.tree.moveToChildError' }}";
+            chk = false;
+          }
+          tree.unshift(node.name);
+          node = node.parent;
+        }
+        if (chk){
+          node = target;
+          for(const child of node.children) {
+            if (child.name === selected.name) {
+              const tree = [];
+              {
+                let node = target;
+                while (node.parent) {
+                  tree.unshift(node.name);
+                  node = node.parent;
+                }
+              }
+              str = format_string("{{ __ 'page.contents.tree.moveDupError' }}", tree.join(" / "));
+              chk = false;
+            }
+          }
+          if (chk) {
+            str = format_string("{{ __ 'page.contents.tree.moveNext' }}", tree.join(" / "));
+          }
+        }
+      }
+    }
+    return {chk,str};
+  }
+
   addEventListener("load", (event) => {
     const icon1 = document.createElement("i");
     icon1.classList.add("material-icons");
@@ -516,6 +577,21 @@
 
     $("#tree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
 
+    $('#treeMoveTree').tree({
+      closedIcon: icon1,
+      openedIcon: icon2,
+      saveState: false,
+      showEmptyFolder: true
+    }); 
+    $("#treeMoveTree").on(
+      'tree.select',
+      function(event) {
+        const {chk,str} = chkStrTreeMoveDirectory();
+        $("#treeMoveName").text(str);
+        $("#treeMoveSubmit").prop("disabled", !chk);
+      });
+    $("#treeMoveTree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
+
     $("#treeAdd").on("show.bs.modal", function() {
       let name = "{{ __ 'page.contents.tree.root' }}";
       if ($("#tree").tree('getSelectedNode')) {
@@ -539,6 +615,36 @@
       $("#treeDoAddSpinner").addClass("d-none");
       $("#treeAddFormName").val("");
       $("#treeAddFormDesc").val("");
+    });
+    $("#treeMove").on("shown.bs.modal", function() {
+      if (!$("#tree").tree('getSelectedNode')) {
+        alert("{{ __ 'page.contents.tree.moveNotSelectError' }}");
+        $("#treeMove").modal("hide");
+        return;
+      }
+      const tree = [];
+      let node = $("#tree").tree('getSelectedNode');
+      node = node.parent;
+      while (node.parent) {
+        tree.unshift(node.name);
+        node = node.parent;
+      }
+      let descName = tree.join(" / ");
+      if (tree.length === 0) {
+        descName = "{{ __ 'page.contents.tree.root' }}";
+      }
+      const name = $("#tree").tree('getSelectedNode').name;
+      $("#treeMoveTree").tree("selectNode", $("#treeMoveTree").tree('getNodeById', $("#tree").tree('getSelectedNode').id), false);
+      $("#treeMoveNameCurrent").text(format_string("{{ __ 'page.contents.tree.moveNameCurrent' }}", descName));
+
+      $("#treeMoveSubmit").prop("disabled", false);
+      $("#treeDoMoveText").removeClass("d-none");
+      $("#treeDoMoveSpinner").addClass("d-none");
+      $("#treeMoveTarget").text(format_string("{{ __ 'page.contents.tree.moveCurrent' }}", name));
+      $("#treeMoveDescription").text(format_string("{{ __ 'page.contents.tree.moveCurrentDesc' }}", name));
+      const {chk,str} = chkStrTreeMoveDirectory();
+      $("#treeMoveName").text(str);
+      $("#treeMoveSubmit").prop("disabled", !chk);
     });
     $("#treeRename").on("show.bs.modal", function() {
       let name = "{{ __ 'page.contents.tree.root' }}";
@@ -676,6 +782,38 @@
       }
     });
   }
+  function moveTreeNode(){
+    $("#treeMoveSubmit").prop("disabled", true);
+    $("#treeDoMoveText").addClass("d-none");
+    $("#treeDoMoveSpinner").removeClass("d-none");
+    $.ajax({
+      url: "{{baseUrl}}/api/contents/moveTree",
+      type: "POST",
+      data: {
+        dir_id: $("#tree").tree('getSelectedNode') ? $("#tree").tree('getSelectedNode').id : '',
+        target_id: $("#treeMoveTree").tree('getSelectedNode') ? $("#treeMoveTree").tree('getSelectedNode').id : '',
+        _csrf: "{{ _csrf }}"
+      },
+      success: function(data) {
+        if (data && data.error) {
+          alert("Error: " + data.error);
+        }else{
+          $("#treeMove").modal("hide");
+          $("#tree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
+          $("#treeMoveTree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
+        }
+      },
+      error: function(xhr, status, error) {
+        alert("Error: " + error);
+      },
+      complete: function() {
+        $("#treeMoveSubmit").prop("disabled", false);
+        $("#treeDoMoveText").removeClass("d-none");
+        $("#treeDoMoveSpinner").addClass("d-none");
+      }
+    });
+    return false;
+  }
 </script>
 
 <!-- modal -->
@@ -722,6 +860,43 @@
   </div>
 </div>
 <!-- tree move -->
+<div class="modal fade modal-xl" id="treeMove" data-bs-keyboard="false" tabindex="-1" aria-labelledby="treeMoveLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="treeMoveLabel">{{ __ 'page.contents.tree.move' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <h3 id="treeMoveTarget"></h3>
+          <p id="treeMoveDescription"></p>
+          <hr>
+          <p id="treeMoveNameCurrent"></p>
+          <p id="treeMoveName"></p>
+          <div class="row">
+            <div id="treeMoveTargetTree" class="col align-items-center">
+              <div id="treeMoveTree" data-url="{{baseUrl}}/api/contents/tree"></div>
+            </div>
+            <div id="treeMoveBody" class="col">
+            </div>
+          </div>
+          <div class="text-end">{{ __ 'page.contents.tree.moveEssDesc' }}</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.tree.modalClose' }}</button>
+            <button type="button" class="btn btn-primary" id="treeMoveSubmit" onclick="return moveTreeNode();">
+              <span id="treeDoMoveText">{{ __ 'page.contents.tree.doMove' }}</span>
+              <span id="treeDoMoveSpinner" class="d-none">
+                <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                {{ __ 'page.contents.tree.moving' }}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- tree rename -->
 <div class="modal fade modal-xl" id="treeRename" data-bs-keyboard="false" tabindex="-1" aria-labelledby="treeRenameLabel">
   <div class="modal-dialog">
@@ -792,7 +967,7 @@
         <div id="tree" data-url="{{baseUrl}}/api/contents/tree"></div>
         <div id="treeControl" class="text-end">
           <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeAdd">{{ __ 'page.contents.tree.add'}}</button>
-          <!-- <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeMove">{{ __ 'page.contents.tree.move'}}</button> -->
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeMove">{{ __ 'page.contents.tree.move'}}</button>
           <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#treeRename">{{ __ 'page.contents.tree.rename'}}</button>
         </div>
       </div>

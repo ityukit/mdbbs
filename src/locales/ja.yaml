@@ -70,6 +70,20 @@ page:
       renameDataLoading: "読み込み中..."
       renameDupError: "名前が重複しています"
 
+      moveNotSelectError: "アイテムが選択されていません"
+      moveNameCurrent: "移動前の場所 [{0}]"
+      moveName: "移動後の場所 [{0}]"
+      moveCurrent: "[{0}] の移動"
+      moveCurrentDesc: " [{0}] アイテムを移動します"
+      moveNext: "[{0}] へ移動"
+      moveTarget: "移動先"
+      moving: "移動中..."
+      moveToChildError: "子要素に移動することはできません"
+      moveToSelfError: "自分自身に移動することはできません"
+      moveDupError: "移動先[{0}]に同じ名前のアイテムが存在します"
+      moveCurrentError: "現在の場所です"
+      moveEssDesc: "移動先の指定は必須です"
+
     tagCloud:
       noTags: "タグが見つかりませんでした"
     breadcrumb:

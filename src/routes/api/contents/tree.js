@@ -249,7 +249,7 @@ export default async function tree(app, main, api, subdir, moduleName, settings)
       }
       if (keyword === ''){
         tree = await database.transaction(async (tx) => {
-          return await get_tree(root, keyword, 1, 2, tx);
+          return await get_tree(root, keyword, 1, 3, tx);
         });
       }else{
         tree = await database.transaction(async (tx) => {
