@@ -10,6 +10,7 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeRewrite from 'rehype-rewrite';
 import {headingRank} from 'hast-util-heading-rank';
+import remarkBreaks from 'remark-breaks'
 
 import { visit } from "unist-util-visit";
 
@@ -340,6 +341,7 @@ class ParserDefault{
                         .use(markdown)
                         .use(remarkGfm)
                         .use(remarkMath)
+                        .use(remarkBreaks)
                         .use(footnoteRemarkHandler, {id: id})
                         //.use(remarkRuby)
                         //.use(rubyAttacher)

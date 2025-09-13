@@ -215,6 +215,13 @@ background: #FFFFFF;
   border-radius: .2rem;
 }
 
+.contents-preview {
+  overflow: scroll;
+  border: 1px solid #dcdcdc;
+  resize: vertical;
+  height: 200px;
+}
+
 .md-icon-link {
   font-size: 0.6em;
   vertical-align: middle;
