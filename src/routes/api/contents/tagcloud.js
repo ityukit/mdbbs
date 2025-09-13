@@ -1,6 +1,6 @@
 import database from '../../../database.js';
 
-async function get_tags(id, nodeWord, db) {
+async function get_tags(id, nodeWord, maxCount,tagWord, db) {
   let tags = null;
   let tx = null;
   if (id === ''){
@@ -9,7 +9,7 @@ async function get_tags(id, nodeWord, db) {
                    .groupBy(['tags.tag_id','tags.display_name'])
                    .orderBy('cnt', 'desc')
                    .orderBy('tags.tag_id', 'asc')
-                   .limit(50);
+                   .limit(maxCount);
     if (nodeWord){
       nodeWord = nodeWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
       tx = tx
@@ -29,8 +29,12 @@ async function get_tags(id, nodeWord, db) {
                    .groupBy(['tags.tag_id', 'tags.display_name'])
                    .orderBy('cnt', 'desc')
                    .orderBy('tags.tag_id', 'asc')
-                   .limit(50);
+                   .limit(maxCount);
     // nodeWordは無視
+  }
+  if (tagWord){
+    tagWord = tagWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    tx = tx.where('tags.display_name', 'like', `%${tagWord}%`);
   }
   tags = await tx;
   return tags.map(tag => {
@@ -47,8 +51,15 @@ export default async function tagcloud(app, main, api, subdir, moduleName, setti
   api.get('/contents/tagcloud', async (req, res) => {
     let root = req.query.treeId || '';
     const nodeWord = req.query.nodeWord || '';
+    let maxCount = parseInt(req.query.maxCount || '50', 10);
+    const tagWord = req.query.tagWord || '';
+    if (Number.isNaN(maxCount) || maxCount < 1) {
+      maxCount = 50;
+    } else if (maxCount > 500) {
+      maxCount = 500;
+    }
     const tags = await database.transaction(async (tx) => {
-      return await get_tags(root, nodeWord, tx);
+      return await get_tags(root, nodeWord,maxCount,tagWord, tx);
     });
     res.json(tags);
   });

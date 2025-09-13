@@ -41,8 +41,10 @@
         );
         breadcrumb.push(item);
       }
+      // root not set
       const item = $("<li>").addClass("breadcrumb-item active").html(
-        `{{ __ "page.contents.breadcrumb.dashboard" }}`
+      //  `{{ __ "page.contents.breadcrumb.dashboard" }}`
+      ''
       );
       breadcrumb.unshift(item);
       const tags = [];
@@ -968,6 +970,7 @@
   </div>
 </div>
 {{> contents/threadMenuModal }}
+{{> contents/threadCreateModal }}
 
 <!-- main -->
 <div class="container-fluid">
@@ -1004,10 +1007,18 @@
       </nav>
       {{/if}}
       <div class="row">
-        <nav id="breadcrumb" aria-label="breadcrumb">
-          <ol id="breadcrumbList" class="breadcrumb">
-          </ol>
-        </nav>
+        <div class="d-flex flex-row">
+          <div>
+            <button class="btn btn-outline-primary btn-nano" type="button" data-bs-toggle="modal" data-bs-target="#threadCreate">{{ __ 'page.contents.index.newThread' }}</button>
+          </div>
+          &nbsp; : &nbsp;
+          <div>
+            <nav id="breadcrumb" aria-label="breadcrumb">
+              <ol id="breadcrumbList" class="breadcrumb">
+              </ol>
+            </nav>
+          </div>
+        </div>
       </div>
       <div class="row text-end">
           <div id="tags"></div>

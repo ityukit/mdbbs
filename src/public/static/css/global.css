@@ -207,3 +207,11 @@ background: #FFFFFF;
   height: 1rem; /* アイコンの高さを小さくする */
   width: 1rem; /* アイコンの幅を小さくする */
 }
+
+.btn-nano {
+  padding: .1rem .2rem;
+  font-size: .6rem;
+  line-height: 1.2;
+  border-radius: .2rem;
+}
+

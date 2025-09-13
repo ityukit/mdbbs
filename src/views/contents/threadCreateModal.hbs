@@ -1,0 +1,182 @@
+<!-- thread create -->
+<div class="modal fade modal-xl" id="threadCreate" data-bs-keyboard="false" tabindex="-1" aria-labelledby="threadCreateLabel" data-bs-backdrop="static">
+  <div class="modal-dialog modal-fullscreen2">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="threadCreateLabel">{{ __ 'page.contents.thread.modal.create.title' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <h3 id="threadCreateTarget"></h3>
+          <p id="threadCreateDescription"></p>
+          <hr>
+          <div class="row">
+            <div class="col-12 mb-3">
+              <label for="threadCreateTitle" class="form-label">{{ __ 'page.contents.thread.modal.create.threadTitle' }}*</label>
+              <input type="text" class="form-control" id="threadCreateTitle" required>
+            </div>
+            <div class="col-12 mb-3">
+              <label for="threadCreateContentTitle" class="form-label">{{ __ 'page.contents.thread.modal.create.contentTitle' }}*</label>
+              <input type="text" class="form-control" id="threadCreateContentTitle" required>
+            </div>
+            <ul class="nav nav-tabs" id="threadCreateViewTab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="threadCreateViewTab-source" data-bs-toggle="tab" data-bs-target="#threadCreateViewTab-source-pane" type="button" role="tab" aria-controls="threadCreateViewTab-source-pane" aria-selected="true">{{ __ 'page.contents.thread.modal.create.source' }}</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="threadCreateViewTab-preview" data-bs-toggle="tab" data-bs-target="#threadCreateViewTab-preview-pane" type="button" role="tab" aria-controls="threadCreateViewTab-preview-pane" aria-selected="false" onclick="threadCreateModal_previewContent()">{{ __ 'page.contents.thread.modal.create.preview' }}</button>
+              </li>
+            </ul>
+            <div class="tab-content" id="threadCreateViewTabContent">
+              <div class="tab-pane fade show active" id="threadCreateViewTab-source-pane" role="tabpanel" aria-labelledby="threadCreateViewTab-source" tabindex="0">
+                <label for="threadCreateContent" class="form-label">{{ __ 'page.contents.thread.modal.create.content' }}*</label>
+                <textarea class="form-control" id="threadCreateContent" rows="6" required></textarea>
+              </div>
+              <div class="tab-pane fade" id="threadCreateViewTab-preview-pane" role="tabpanel" aria-labelledby="threadCreateViewTab-preview" tabindex="0">
+                <label for="threadCreateContentPreview" class="form-label">{{ __ 'page.contents.thread.modal.create.contentPreview' }}</label>
+                <div id="threadCreateContentPreview" class="border p-2" style="min-height: 200px;"></div>
+              </div>
+            </div>
+            <div class="col-12 mb-3" id="threadCreateViewTabTag">
+              <label for="threadCreateTag" class="form-label">{{ __ 'page.contents.thread.modal.create.threadTag' }}</label>
+              <select class="form-control" multiple="multiple" id="threadCreateTag">
+              </select>
+            </div>
+          </div>
+          <div class="text-end">{{ __ 'page.contents.thread.modal.create.threadEssDesc' }}</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.thread.modal.create.modalClose' }}</button>
+            <button type="button" class="btn btn-primary" id="threadCreateSubmit" onclick="return createThread();">
+              <span id="threadDoCreateText">{{ __ 'page.contents.thread.modal.create.doCreate' }}</span>
+              <span id="threadDoCreateSpinner" class="d-none">
+                <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                {{ __ 'page.contents.thread.modal.create.creating' }}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  function threadCreateModal_previewContent() {
+    const content = document.getElementById('threadCreateContent').value;
+    if (content.trim().length === 0) {
+      $('#threadCreateContentPreview').text('{{ __ "page.contents.thread.modal.create.previewEmpty" }}');
+      return;
+    }
+    $('#threadCreateContentPreview').text('{{ __ "page.contents.thread.modal.create.previewLoading" }}');
+    $.ajax({
+      type: 'POST',
+      url: '{{ baseUrl }}/api/contents/parse',
+      data: {
+        content: content,
+        parser: 'default',
+        _csrf: '{{_csrf}}'
+      },
+      dataType: 'json',
+      success: function(data) {
+        if (data && data.contentsparsed) {
+          $('#threadCreateContentPreview').html(data.contentsparsed);
+          // highlight.js
+          document.querySelectorAll('#threadCreateContentPreview pre code').forEach((block) => {
+            hljs.highlightElement(block);
+          });
+        } else {
+          $('#threadCreateContentPreview').text('{{ __ "page.contents.thread.modal.create.previewError" }}');
+        }
+      },
+      error: function() {
+        $('#threadCreateContentPreview').text('{{ __ "page.contents.thread.modal.create.previewError" }}');
+      }
+    });
+  }
+  let threadCreateTargetId = '';
+  // select2
+  $(document).ready(function() {
+    $('#threadCreateTag').select2({
+      dropdownParent: $('#threadCreate'),
+      width: '100%',
+      allowClear: true,
+      tags: true,
+      tokenSeparators: [',', ' ' ,';','>', '\n','\t',
+                        '、','　','；','＞',
+                        '，　','。','．','・','/','\\'],
+      ajax: {
+        url: (param)=>{return "{{ baseUrl }}/api/contents/tagcloud"},
+        data: function (params) {
+          var query = {
+            tagWord: params.term,
+            maxCount: 50,
+            treeId: threadCreateTargetId,
+          }
+          return query;
+        },
+        delay: 250 ,
+        dataType: 'json',
+        processResults: function (data) {
+          return {
+            results: data.map(function(tag) {
+              return { id: tag.tag_id, text: tag.display_name };
+            }).sort((a,b)=>{
+              if(a.text < b.text) return -1;
+              if(a.text > b.text) return 1;
+              return 0;
+            })
+          };
+        },
+        cache: false
+      },
+      matcher: (params, data) => {
+        // If there are no search terms, return all of the data
+        if ($.trim(params.term) === '') {
+          return data;
+        }
+        // Do not display the item if there is no 'text' property
+        if (typeof data.text === 'undefined') {
+          return null;
+        }
+        // `params.term` should be the term that is used for searching
+        // `data.text` is the text that is displayed for the data object
+        if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) {
+          var modifiedData = $.extend({}, data, true);
+          // You can modify/add properties to the object as you like
+          // modifiedData.text += ' (matched)';
+          return modifiedData;
+        }
+        // Return `null` if the term should not be displayed
+        return null;
+      },
+      createSearchChoice: function (term, data) {
+        if ($(data).filter(function() {
+          return this.text.localeCompare(term)===0;
+        }).length===0) {
+          return {id:'new_tag_id_' + term, text:term};
+        }
+      },
+    });
+    let threadCreate__tagDropdownTimer = null;
+    window.addEventListener('keydown', e => {
+      if (threadCreate__tagDropdownTimer) {
+        clearTimeout(threadCreate__tagDropdownTimer);
+        threadCreate__tagDropdownTimer = null;
+      }
+      if (e.target.closest('#threadCreateViewTabTag')) {
+        // 目的地近くでのキー入力
+        if (e.isComposing || e.key === 'Process' || e.keyCode === 229) {
+          // IME入力中
+          $('#threadCreate .select2-dropdown').hide();
+          threadCreate__tagDropdownTimer = setTimeout(() => {
+            $('#threadCreate .select2-dropdown').show();
+            threadCreate__tagDropdownTimer = null;
+          }, 1500);
+        } else {
+          // IME入力中でない
+          $('#threadCreate .select2-dropdown').show();
+        }
+      }
+    }, true);
+  });
+</script>

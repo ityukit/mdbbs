@@ -36,6 +36,8 @@ page:
       loadError: "読み込みに失敗しました"
       contentArea: "コンテンツエリア"
       noContents: "コンテンツが見つかりませんでした"
+
+      newThread: "新しいスレッド"
     tree:
       search: Tree検索
       searchButton: 実行
@@ -98,20 +100,38 @@ page:
           doMove: "移動"
           moving: "移動中..."
           modalClose: "閉じる"
+        create:
+          title: "新しいスレッド"
+          threadTitle: "スレッドタイトル"
+          contentTitle: "コンテンツタイトル"
+          content: "内容"
+          contentPreview: "内容プレビュー"
+          threadTag: "タグ"
+          threadEssDesc: "* マークの内容は必須です"
+          doCreate: "作成"
+          creating: "作成中..."
+          modalClose: "閉じる"
+          titleError: "タイトルに「 > 」を含めることはできません"
+          source: "ソース"
+          preview: "プレビュー"
+          previewEmpty: "内容が空です"
+          previewLoading: "プレビューを読み込み中..."
+          previewError: "プレビューの読み込みに失敗しました"
+        rename:
 
     tagCloud:
       noTags: "タグが見つかりませんでした"
     breadcrumb:
       root: "(すべて)"
       notFound: "見つかりませんでした"
-      dashboard: "ダッシュボード"
+      dashboard: "ルート"
     pagination:
       previous: "前のページ"
       next: "次のページ"
   thread:
     noThreads: "スレッドが見つかりませんでした"
     breadcrumb:
-      dashboard: "ダッシュボード"
+      dashboard: "ルート"
     info:
       createdAt: "作成日"
       updatedAt: "更新日"
