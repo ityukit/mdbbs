@@ -2,10 +2,12 @@ import { v7 as uuidv7 } from 'uuid';
   
 import database from '../../../database.js';
 import init from '../../../init.js';
+import utils from '../../../lib/utils.js';
+
 
 const settings = init.getSettings();
 
-async function add_tree(name, description, parent, req, res, tx) {
+async function add_tree(name, description, parent, firstSortKey, secondSortKey, req, res, tx) {
   // search parent id
   let parentId = -1;
   if (parent ==  undefined || parent == null || parent === '') {
@@ -48,6 +50,8 @@ async function add_tree(name, description, parent, req, res, tx) {
     dir_id: id,
     display_name: name,
     description,
+    first_sort_key: firstSortKey,
+    second_sort_key: secondSortKey,
     created_user_id: req.session.user.id,
     updated_user_id: req.session.user.id,
   };
@@ -62,7 +66,7 @@ async function add_tree(name, description, parent, req, res, tx) {
 export default async function index(app, main, api, subdir, moduleName, settings) {
   // ツリー構造取得処理
   api.post('/contents/addTree', async (req, res) => {
-    const { name, description, parent } = req.body;
+    const { name, description, parent, firstSortKey, secondSortKey } = req.body;
 
     if (name === undefined || name === null || name === '') {
       return res.status(400).json({ error: 'Name is required' });
@@ -70,9 +74,17 @@ export default async function index(app, main, api, subdir, moduleName, settings
     if (name.includes(' > ')) {
       return res.status(400).json({ error: 'Name must not contain " > "' });
     }
+    let fkey = utils.parseSafeInt(firstSortKey, 0);
+    let skey = secondSortKey;
+    if (skey === undefined || skey === null || skey === '') {
+      skey = '';
+    }
+    if (skey.length > 255) {
+      return res.status(400).json({ error: 'Second sort key must be 255 characters or less' });
+    }
 
     let data = await database.transaction(async (tx) => {
-      return await add_tree(name, description, parent, req, res, tx);
+      return await add_tree(name, description, parent, fkey, skey, req, res, tx);
     });
     // res.json(data);
   });

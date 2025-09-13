@@ -20,7 +20,7 @@ async function usermapping(uid,db){
 }
 
 async function tree_info(dir_id, req, res, tx) {
- const data = await tx.select('display_name', 'description', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at')
+ const data = await tx.select('display_name', 'description','first_sort_key', 'second_sort_key', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at')
                       .from('dirs')
                       .where({ dir_id: dir_id });
   if (data.length === 0) {
@@ -30,6 +30,8 @@ async function tree_info(dir_id, req, res, tx) {
     dir_id: dir_id,
     display_name: data[0].display_name,
     description: data[0].description,
+    first_sort_key: data[0].first_sort_key,
+    second_sort_key: data[0].second_sort_key,
     created_user: await usermapping(data[0].created_user_id, tx),
     updated_user: await usermapping(data[0].updated_user_id, tx),
     updated_at: data[0].updated_at.toISOString(),

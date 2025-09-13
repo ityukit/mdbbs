@@ -641,6 +641,7 @@
       $("#treeAddFormDesc").val("");
     });
     $("#treeMove").on("shown.bs.modal", function() {
+      $("#treeMoveTree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
       if (!$("#tree").tree('getSelectedNode')) {
         alert("{{ __ 'page.contents.tree.moveNotSelectError' }}");
         $("#treeMove").modal("hide");
@@ -716,6 +717,8 @@
             $("#treeRenameCurrent").val(data.display_name);
             $("#treeRenameFormName").val(data.display_name);
             $("#treeRenameFormDesc").val(data.description);
+            $("#treeRenameFirstSortKey").val(data.first_sort_key);
+            $("#treeRenameSecondSortKey").val(data.second_sort_key);
             $("#treeRenameBodyLoading").addClass("d-none");
             $("#treeRenameBody").removeClass("d-none");
           }
@@ -749,6 +752,8 @@
         name: $("#treeAddFormName").val(),
         description: $("#treeAddFormDesc").val(),
         parent: parentId,
+        firstSortKey: $("#treeAddFirstSortKey").val(),
+        secondSortKey: $("#treeAddSecondSortKey").val(),
         _csrf: "{{ _csrf }}"
       },
       success: function(data) {
@@ -786,6 +791,8 @@
         dir_id: $("#tree").tree('getSelectedNode') ? $("#tree").tree('getSelectedNode').id : '',
         name: $("#treeRenameFormName").val(),
         description: $("#treeRenameFormDesc").val(),
+        firstSortKey: $("#treeRenameFirstSortKey").val(),
+        secondSortKey: $("#treeRenameSecondSortKey").val(),
         _csrf: "{{ _csrf }}"
       },
       success: function(data) {
@@ -865,6 +872,18 @@
             <label for="treeAddFormDesc" class="form-label">{{ __ 'page.contents.tree.addDesc' }}</label>
             <div class="input-group">
               <textarea class="form-control" id="treeAddFormDesc"></textarea>
+            </div>
+          </div>
+          <hr>
+          <p>{{ __ 'page.contents.tree.addDetail' }}</p>
+          <div>
+            <div class="col">
+              <label for="treeAddFirstSortKey" class="form-label">{{ __ 'page.contents.tree.addFirstSortKey' }}</label>
+              <input type="number" class="form-control" id="treeAddFirstSortKey" step="1" max="999999999" min="-999999999">
+            </div>
+            <div class="col">
+              <label for="treeAddSecondSortKey" class="form-label">{{ __ 'page.contents.tree.addSecondSortKey' }}</label>
+              <input type="text" class="form-control" id="treeAddSecondSortKey">
             </div>
           </div>
           <div class="text-end">{{ __ 'page.contents.tree.addEssDesc' }}</div>
@@ -951,6 +970,18 @@
             <label for="treeRenameFormDesc" class="form-label">{{ __ 'page.contents.tree.renameDesc' }}</label>
             <div class="input-group">
               <textarea class="form-control" id="treeRenameFormDesc"></textarea>
+            </div>
+          </div>
+          <hr>
+          <p>{{ __ 'page.contents.tree.renameDetail' }}</p>
+          <div>
+            <div class="col">
+              <label for="treeRenameFirstSortKey" class="form-label">{{ __ 'page.contents.tree.renameFirstSortKey' }}</label>
+              <input type="number" class="form-control" id="treeRenameFirstSortKey" step="1" max="999999999" min="-999999999">
+            </div>
+            <div class="col">
+              <label for="treeRenameSecondSortKey" class="form-label">{{ __ 'page.contents.tree.renameSecondSortKey' }}</label>
+              <input type="text" class="form-control" id="treeRenameSecondSortKey">
             </div>
           </div>
           <div class="text-end">{{ __ 'page.contents.tree.renameEssDesc' }}</div>

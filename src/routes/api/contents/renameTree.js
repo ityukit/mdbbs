@@ -1,9 +1,10 @@
 import database from '../../../database.js';
 import init from '../../../init.js';
+import utils from '../../../lib/utils.js';
 
 const settings = init.getSettings();
 
-async function rename_tree(dir_id, name, description, req, res, tx) {
+async function rename_tree(dir_id, name, description, firstSortKey, secondSortKey, req, res, tx) {
   const chk1 = await tx.select('id').from('dirs').where({ dir_id: dir_id });
   if (chk1.length === 0) {
     return res.status(404).json({ error: 'directory not found' });
@@ -38,6 +39,10 @@ async function rename_tree(dir_id, name, description, req, res, tx) {
       display_name: name,
       description: description,
       updated_user_id: req.session.user.id,
+      first_sort_key: firstSortKey,
+      second_sort_key: secondSortKey,
+      updated_at: database.fn.now(),
+      updated_user_id: req.session.user.id,
     });
 
   // OK!
@@ -49,7 +54,7 @@ async function rename_tree(dir_id, name, description, req, res, tx) {
 export default async function index(app, main, api, subdir, moduleName, settings) {
   // ツリー構造取得処理
   api.post('/contents/renameTree', async (req, res) => {
-    const { dir_id, name, description } = req.body;
+    const { dir_id, name, description, firstSortKey, secondSortKey } = req.body;
 
     if (dir_id === undefined || dir_id === null || dir_id === '') {
       return res.status(400).json({ error: 'Directory ID is required' });
@@ -57,12 +62,20 @@ export default async function index(app, main, api, subdir, moduleName, settings
     if (name === undefined || name === null || name === '') {
       return res.status(400).json({ error: 'Name is required' });
     }
-   if (name.includes(' > ')) {
+    if (name.includes(' > ')) {
       return res.status(400).json({ error: 'Name must not contain " > "' });
+    }
+    let fkey = utils.parseSafeInt(firstSortKey, 0);
+    let skey = secondSortKey;
+    if (skey === undefined || skey === null || skey === '') {
+      skey = '';
+    }
+    if (skey.length > 255) {
+      return res.status(400).json({ error: 'Second sort key must be 255 characters or less' });
     }
 
     let data = await database.transaction(async (tx) => {
-      return await rename_tree(dir_id, name, description, req, res, tx);
+      return await rename_tree(dir_id, name, description, fkey, skey, req, res, tx);
     });
     // res.json(data);
   });
