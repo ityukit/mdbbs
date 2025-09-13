@@ -7,6 +7,9 @@ export function up(knex) {
     table.boolean('visibled').notNullable().defaultTo(true);
     table.boolean('enabled').notNullable().defaultTo(true);
 
+    table.bigint('first_sort_key').notNullable().defaultTo(0);
+    table.text('second_sort_key').notNullable().defaultTo('');
+
     table.bigint('updated_user_id').notNullable();
     table.bigint('created_user_id').notNullable();
 

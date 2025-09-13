@@ -9,6 +9,14 @@ export function up(knex) {
 
     table.bigInteger('status').notNullable();
 
+    table.boolean('visibled').notNullable().defaultTo(true);
+    table.boolean('enabled').notNullable().defaultTo(true);
+    table.boolean('locked').notNullable().defaultTo(false);
+
+    table.bigint('first_sort_key').notNullable().defaultTo(0);
+    table.text('second_sort_key').notNullable().defaultTo('');
+
+
     table.bigint('created_user_id').notNullable();
     table.bigint('updated_user_id').notNullable();
     table.bigint('last_updated_user_id').notNullable();
