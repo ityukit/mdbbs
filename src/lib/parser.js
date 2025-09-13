@@ -16,11 +16,11 @@ class Parser{
     });
     this.initialized = true;
   }
-  async parse(parser, text){
+  async parse(parser, text, id){
     if (this.parsers[parser]) {
-      return await this.parsers[parser].parse(text);
+      return await this.parsers[parser].parse(text, id);
     }
-    return await this.parsers['default'].parse(text);
+    return await this.parsers['default'].parse(text, id);
   }
 }
 

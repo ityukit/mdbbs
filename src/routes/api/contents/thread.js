@@ -67,10 +67,12 @@ async function get_contents(cid,listmax,db) {
   if (!currentList) return null;
   //console.log("currentList:", currentList);
   for(const c of currentList){
+    const contentParsed = await parser.parse(c.parser, c.contents, c.id);
     ret.push({
       id: c.id,
       title: c.title,
-      contents:  (await parser.parse(c.parser, c.contents)).value,
+      contents: contentParsed.main,
+      toc: contentParsed.toc,
       description: c.description,
       locked: c.locked,
       updated_user: await usermapping(c.updated_user_id, db),
@@ -120,10 +122,12 @@ async function get_contents(cid,listmax,db) {
         if (currentRList.length > 1 && currentRList[1].id !== currentList[currentList.length-1].id){
           ret.push(null);
         }
+        const contentParsed = await parser.parse(currentRList[0].parser, currentRList[0].contents, currentRList[0].id);
         ret.push({
           id: currentRList[0].id,
           title: currentRList[0].title,
-          contents:  (await parser.parse(currentRList[0].parser, currentRList[0].contents)).value,
+          contents: contentParsed.main,
+          toc: contentParsed.toc,
           description: currentRList[0].description,
           locked: currentRList[0].locked,
           updated_user: await usermapping(currentRList[0].updated_user_id, db),

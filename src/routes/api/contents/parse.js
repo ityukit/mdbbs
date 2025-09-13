@@ -11,8 +11,11 @@ export default async function parse(app, main, api, subdir, moduleName, settings
       parser_type = 'default';
     }
     // parse
-    const parsed = (await parser.parse(parser_type,content)).value;
-    res.json({ contentsparsed: parsed });
+    const parsed = (await parser.parse(parser_type,content, -1));
+    res.json({
+      contentsparsed: parsed.main,
+      toc: parsed.toc,
+    });
   });
   return null;
 }

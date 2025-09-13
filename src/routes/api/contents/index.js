@@ -117,7 +117,7 @@ async function get_index(node, tags, nodeWord,  start,len, db) {
       contents: {
         id: d.cid,
         title: d.ctitle,
-        contents: (await parser.parse(d.parser, d.contents)).value,
+        contents: (await parser.parse(d.parser, d.contents, d.cid)).main,
         description: d.description,
         updated_user: await usermapping(d.updated_user_id, db),
         created_user: await usermapping(d.created_user_id, db),

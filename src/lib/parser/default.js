@@ -6,14 +6,20 @@ import rehypeMathjax from 'rehype-mathjax'
 import remark2rehype from 'remark-rehype'
 import html from 'rehype-stringify';
 import rehypeHighlight from 'rehype-highlight'
+import rehypeSlug from 'rehype-slug';
+import rehypeAutolinkHeadings from 'rehype-autolink-headings';
+import rehypeRewrite from 'rehype-rewrite';
+import {headingRank} from 'hast-util-heading-rank';
 
 import { visit } from "unist-util-visit";
 
 import {inspect} from 'unist-util-inspect';
 import {toHast} from 'mdast-util-to-hast';
 import {u} from 'unist-builder';
+import {h} from 'hastscript'
 
 import init from '../../init.js';
+import _ from 'lodash';
 
 // see https://vivliostyle.github.io/vivliostyle_doc/ja/vivliostyle-user-group-vol2/spring-raining/index.html
 function rubyLocator(value, fromIndex){
@@ -293,10 +299,31 @@ class RubyPlugin{
   }
 }
 
+function footnoteRemarkHandler(options) {
+  const id = options?.id || '0';
+  return (tree) => {
+    visit(tree, 'footnoteDefinition', (node, index, parent) => {
+      if (node.identifier){
+        node.identifier = `footnote-${id}-${node.identifier.replace(/ /g, '-')}`;
+      }
+      if (node.label){
+        node.label = `footnote-${id}-${node.label.replace(/ /g, '-')}`;
+      }
+    });
+    visit(tree, 'footnoteReference', (node, index, parent) => {
+      if (node.identifier){
+        node.identifier = `footnote-${id}-${node.identifier.replace(/ /g, '-')}`;
+      }
+      if (node.label){
+        node.label = `footnote-${id}-${node.label.replace(/ /g, '-')}`;
+      }
+    });
+  };
+}
+
 class ParserDefault{
   constructor(){
     if (!ParserDefault.instance) {
-      this.processor = null;
       this.initialized = false;
       ParserDefault.instance = this;
     }
@@ -304,10 +331,16 @@ class ParserDefault{
   }
   async _init() {
     if (!this.initialized) {
-      this.processor = await unified()
-                        .use(markdown,{fragment: true})
+      this.initialized = true;
+    }
+  }
+  async parse(text, id) {
+    let titles = [];
+    const processor = await unified()
+                        .use(markdown)
                         .use(remarkGfm)
                         .use(remarkMath)
+                        .use(footnoteRemarkHandler, {id: id})
                         //.use(remarkRuby)
                         //.use(rubyAttacher)
                         .use(RubyPlugin.plugin)
@@ -317,12 +350,46 @@ class ParserDefault{
                         })
                         .use(rehypeMathjax)
                         .use(rehypeHighlight)
+                        .use(rehypeSlug, {prefix : `user-title-${id}-`})
+                        .use(rehypeRewrite, {
+                          rewrite: (node, index, parent) => {
+                            // get titles
+                            const rank = headingRank(node);
+                            if (rank && node.children && node.children.length > 0) {
+                              let titleText = '';
+                              for(const c of node.children) {
+                                if (c.type === 'text') {
+                                  titleText += c.value;
+                                }
+                              }
+                              if (titleText.length > 50) {
+                                titleText = titleText.substring(0, 50) + '...';
+                              }
+                              titles.push({
+                                depth: rank,
+                                title: titleText,
+                                link: node.properties.id,
+                              });
+                            }
+                          }
+                        })
+                        .use(rehypeAutolinkHeadings,{
+                          behavior: 'append',
+                          content(node) {
+                            return h('span', {class: 'md-icon-link material-icons-outlined'}, 'link');
+                          }
+                        })
                         .use(html);
-      this.initialized = true;
+    const main = await processor.process(text);
+    const titlesCopy = _.cloneDeep(titles);
+    let tocmd = '';
+    for(const t of titlesCopy){
+      tocmd += ' '.repeat((t.depth - 1) * 2) + `- [${t.title}](#${t.link})\n`;
     }
-  }
-  async parse(text) {
-    return await this.processor.process(text);
+    return {
+      main: main.value,
+      toc: (await processor.process(tocmd)).value,
+    };
   }
 }
 
