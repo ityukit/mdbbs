@@ -186,6 +186,7 @@
         node: treeId,
         tags: tagsId,
         nodeWord: keyword,
+        subTree: $('#treeShowSubItems').is(':checked') ? '1' : '0',
       },
       success: function(data) {
         // 成功時の処理
@@ -221,6 +222,7 @@
         node: treeId,
         tags: tagsId,
         nodeWord: keyword,
+        subTree: $('#treeShowSubItems').is(':checked') ? '1' : '0',
         start: contentsPage * contentsCountPerPage,
         len: contentsCountPerPage,
       },
@@ -254,14 +256,32 @@
       tagsids.push(tag.getAttribute('data-tag-id'));
     }
     const tagsid = tagsids.map(id => encodeURIComponent(id)).join('+');
-    if (treeString === '' && treeid === '' && tagsid === '' && contentsPage === 0) {
+    const showSubItems = $('#treeShowSubItems').is(':checked');
+    const items = [];
+    if (treeString !== '') {
+      items.push("treeKeyword=" + encodeURIComponent(treeString));
+    }
+    if (treeid !== '') {
+      items.push("treeId=" + encodeURIComponent(treeid));
+    }
+    if (tagsid !== '') {
+      items.push("tagsId=" + encodeURIComponent(tagsid));
+    }
+    if (showSubItems) {
+      items.push("showSubItems=1");
+    }
+    if (contentsPage > 0) {
+      items.push("page=" + encodeURIComponent(contentsPage));
+    }
+    if (showSubItems && contentsCountPerPage !== 50) {
+      items.push("countPerPage=" + encodeURIComponent(contentsCountPerPage));
+    }else if (!showSubItems && contentsCountPerPage !== 10) {
+      items.push("countPerPage=" + encodeURIComponent(contentsCountPerPage));
+    }
+    if (items.length === 0) {
       history.pushState(null, null, "{{baseUrl}}/contents");
     } else {
-      history.pushState(null, null, 
-        "?treeKeyword=" + encodeURIComponent(treeString)
-         + "&treeId=" + encodeURIComponent(treeid)
-         + "&tagsId=" + encodeURIComponent(tagsid)
-         + "&page=" + encodeURIComponent(contentsPage));
+      history.pushState(null, null, "?" + items.join('&'));
     }
     loadPagination();
   }
@@ -283,7 +303,9 @@
     const treeKeyword = urlParams.get('treeKeyword');
     const treeId = urlParams.get('treeId');
     const tagsId = urlParams.get('tagsId');
+    const showSubItems = urlParams.get('showSubItems') === '1';
     const page = urlParams.get('page');
+    const pageCount = urlParams.get('countPerPage');
 
     if (treeKeyword) {
       $('#treeKeyword').val(treeKeyword);
@@ -312,6 +334,19 @@
     }
     if (page){
       contentsPage = parseInt(page, 10);
+    }
+    if (showSubItems){
+      $('#treeShowSubItems').prop('checked', true);
+      contentsCountPerPage = 50;
+    }else{
+      $('#treeShowSubItems').prop('checked', false);
+      contentsCountPerPage = 10;
+    }
+    if (pageCount){
+      const pc = parseInt(pageCount, 10);
+      if (pc > 0 && pc <= 100) {
+        contentsCountPerPage = pc;
+      }
     }
     loadTagCloud(false);
     loadPagination();
@@ -401,7 +436,7 @@
     let selectedId = selected ? selected.id : '';
     const keyword = document.getElementById("treeKeyword").value;
     $.ajax({
-      url: "{{baseUrl}}/api/contents/tagcloud?treeId=" + encodeURIComponent(selectedId) + "&nodeWord=" + encodeURIComponent(keyword),
+      url: "{{baseUrl}}/api/contents/tagcloud?treeId=" + encodeURIComponent(selectedId) + "&nodeWord=" + encodeURIComponent(keyword) + "&subTree=" + ($('#treeShowSubItems').is(':checked') ? '1' : '0'),
       method: "GET",
       success: async (data) => {
         if (tagCloudObject){
@@ -729,6 +764,12 @@
         }
       });
     });
+    $('#threadCreate').on('shown.bs.modal', function () {
+      threadCreateTargetId = '';
+      if ($("#tree").tree('getSelectedNode')) {
+        threadCreateTargetId = $("#tree").tree('getSelectedNode').id;
+      }
+    });
   });
 
   function addTreeNode(){
@@ -844,6 +885,17 @@
       }
     });
     return false;
+  }
+  function treeShowSubItemsChange(){
+    if ($('#treeShowSubItems').is(':checked')){
+      contentsCountPerPage = 50;
+    }else{
+      contentsCountPerPage = 10;
+    }
+    contentsPage = 0;
+    loadTagCloud(false);
+    updatePagination();
+    loadContents();
   }
 </script>
 
@@ -1017,6 +1069,10 @@
         <div class="input-group">
           <input type="text" id="treeKeyword" class="form-control form-control-sm" placeholder="{{ __ 'page.contents.tree.search' }}" aria-label="Search" aria-describedby="button-addon2" onkeyup="if($('#treeKeyword').val() === '' || event.key === 'Enter'){ searchTree(); }">
           <button class="btn btn-outline-secondary btn-sm" type="button" onclick="searchTree()">{{ __ 'page.contents.tree.searchButton' }}</button>
+        </div>
+        <div class="form-check form-switch form-control-sm">
+          <input class="form-check-input" type="checkbox" role="switch" id="treeShowSubItems" onchange="treeShowSubItemsChange()">
+          <label class="form-check-label" for="treeShowSubItems">{{ __ 'page.contents.tree.showSubItems' }}</label>
         </div>
         <div id="currentTreeKeyword" class="d-none">
           <span class="">{{ __ 'page.contents.tree.searchWord' }}</span>:<span id="currentTreeKeywordText"></span>

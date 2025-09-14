@@ -1,36 +1,45 @@
+import { el } from 'date-fns/locale';
 import database from '../../../database.js';
 
-async function get_tags(id, nodeWord, maxCount,tagWord, db) {
+async function get_tags(id, nodeWord, maxCount,tagWord,subTree, db) {
   let tags = null;
   let tx = null;
-  if (id === ''){
-    tx = db.select('tags.tag_id', 'tags.display_name').count('tags.tag_id as cnt')
-                   .from('map_thread_tag').join('tags', 'map_thread_tag.tag_id', '=', 'tags.id')
-                   .groupBy(['tags.tag_id','tags.display_name'])
-                   .orderBy('cnt', 'desc')
-                   .orderBy('tags.tag_id', 'asc')
-                   .limit(maxCount);
-    if (nodeWord){
-      nodeWord = nodeWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-      tx = tx
-                   .join('threads', 'map_thread_tag.thread_id', '=', 'threads.id')
-                   .join('dirtree', 'threads.dirtree_id', '=', 'dirtree.id')
-                   .join('dirs', 'dirs.id', '=', 'dirtree.child_id')
-                   .where('dirs.display_name', 'like', `%${nodeWord}%`)
+  let dir_id = -1;
+  if (id !== ''){
+    const chk = await db.select('id').from('dirs').where({ dir_id: id });
+    if (chk.length === 0) {
+      // not found
+      return [];
     }
+    dir_id = chk[0].id;
+  }
+  if (subTree){
+    // get subtree ids
+    tx = db.queryBuilder().withRecursive('t_child_list', (qb) => {
+      qb.select('id','child_id','parent_id').from('dirtree').where('parent_id', dir_id)
+        .unionAll((qb) => {
+          qb.select('dirtree.id','dirtree.child_id','dirtree.parent_id').from('dirtree')
+            .join('t_child_list', 'dirtree.parent_id', '=', 't_child_list.child_id')
+        });
+    })
   }else{
-    tx = db.select('tags.tag_id', 'tags.display_name').count('tags.tag_id as cnt')
-                   .from('dirs')
-                   .join('dirtree', 'dirs.id', '=', 'dirtree.child_id')
-                   .join('threads', 'dirtree.id', '=', 'threads.dirtree_id')
-                   .join('map_thread_tag', 'threads.id', '=', 'map_thread_tag.thread_id')
-                   .join('tags', 'map_thread_tag.tag_id', '=', 'tags.id')
-                   .where('dirs.dir_id', id)
-                   .groupBy(['tags.tag_id', 'tags.display_name'])
-                   .orderBy('cnt', 'desc')
-                   .orderBy('tags.tag_id', 'asc')
-                   .limit(maxCount);
-    // nodeWordは無視
+    tx = db.queryBuilder().with('t_child_list', (qb) => {
+      qb.select('id','child_id','parent_id').from('dirtree').where('parent_id', dir_id);
+    })
+  }
+  // t_child_list(dirtree).parent_id(dir_id)となる全タグ
+  tx = tx.select('tags.tag_id', 'tags.display_name').count('tags.tag_id as cnt')
+          .from('t_child_list')
+          .join('threads', 't_child_list.id', '=', 'threads.dirtree_id')
+          .join('map_thread_tag', 'threads.id', '=', 'map_thread_tag.thread_id')
+          .join('tags', 'map_thread_tag.tag_id', '=', 'tags.id')
+          .groupBy(['tags.tag_id', 'tags.display_name'])
+          .orderBy('cnt', 'desc')
+          .orderBy('tags.display_name', 'asc')
+          .limit(maxCount);
+  if (nodeWord){
+    nodeWord = nodeWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    tx = tx.where('dirs.display_name', 'like', `%${nodeWord}%`)
   }
   if (tagWord){
     tagWord = tagWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
@@ -53,13 +62,24 @@ export default async function tagcloud(app, main, api, subdir, moduleName, setti
     const nodeWord = req.query.nodeWord || '';
     let maxCount = parseInt(req.query.maxCount || '50', 10);
     const tagWord = req.query.tagWord || '';
+    const subTree = req.query.subTree === '1';
+    const useGroup = req.query.useGroup === '1';
     if (Number.isNaN(maxCount) || maxCount < 1) {
       maxCount = 50;
     } else if (maxCount > 500) {
       maxCount = 500;
     }
     const tags = await database.transaction(async (tx) => {
-      return await get_tags(root, nodeWord,maxCount,tagWord, tx);
+      if (!useGroup || root === '') {
+        return await get_tags(root, nodeWord, maxCount, tagWord, subTree, tx);
+      } else {
+        let ctags = await get_tags(root, nodeWord, maxCount, tagWord, subTree, tx);
+        let rtags = await get_tags('', nodeWord, maxCount, tagWord, true, tx);
+        return [
+          { text: req.__('page.contents.tagCloud.currentNode'), children: ctags },
+          { text: req.__('page.contents.tagCloud.rootNode'), children: rtags }
+        ];
+      }
     });
     res.json(tags);
   });

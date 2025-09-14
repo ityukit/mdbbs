@@ -47,6 +47,7 @@ page:
       rename: "名前変更"
       modalClose: "閉じる"
       root: "(ルート)"
+      showSubItems: "サブアイテムを表示"
       doAdd: "追加"
       doMove: "移動"
       doRename: "名前変更"
@@ -127,6 +128,8 @@ page:
 
     tagCloud:
       noTags: "タグが見つかりませんでした"
+      currentNode: "現在のノード"
+      rootNode: "ルートノード"
     breadcrumb:
       root: "(すべて)"
       notFound: "見つかりませんでした"

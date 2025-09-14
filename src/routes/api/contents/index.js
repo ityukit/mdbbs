@@ -20,9 +20,36 @@ async function usermapping(uid,db){
   }
 }
 
-async function get_index(node, tags, nodeWord,  start,len, db) {
+async function get_index(node, tags, nodeWord, subTree, start, len, db) {
   let data = [];
-  let tx = db.select(
+
+  let tx = null;
+  let dir_id = -1;
+  if (node !== ''){
+    const chk = await db.select('id').from('dirs').where({ dir_id: node });
+    if (chk.length === 0) {
+      // not found
+      return { count: 0 };
+    }
+    dir_id = chk[0].id;
+  }
+  if (subTree){
+    // get subtree ids
+    tx = db.queryBuilder().withRecursive('t_child_list', (qb) => {
+      qb.select('id','child_id','parent_id').from('dirtree').where('parent_id', dir_id)
+        .unionAll((qb) => {
+          qb.select('dirtree.id','dirtree.child_id','dirtree.parent_id').from('dirtree')
+            .join('t_child_list', 'dirtree.parent_id', '=', 't_child_list.child_id')
+        });
+    })
+  }else{
+    tx = db.queryBuilder().with('t_child_list', (qb) => {
+      qb.select('id','child_id','parent_id').from('dirtree').where('parent_id', dir_id);
+    })
+  }
+
+
+  tx = tx.select(
                   'threads.thread_id as id',
                   'threads.title as title',
                   'threads.status as status',
@@ -43,14 +70,14 @@ async function get_index(node, tags, nodeWord,  start,len, db) {
                   'contents.created_user_id',
                   'contents.updated_at',
                   'contents.created_at',
-                  database.raw('u_dir_ids(dirtree.child_id) as dir_ids'),
-                  database.raw('u_dir_names(dirtree.child_id) as dir_names'),
-                  database.raw('u_tag_ids(threads.id) as tag_ids'),
-                  database.raw('u_tag_names(threads.id) as tag_names')
+                  db.raw('u_dir_ids(t_child_list.child_id) as dir_ids'),
+                  db.raw('u_dir_names(t_child_list.child_id) as dir_names'),
+                  db.raw('u_tag_ids(threads.id) as tag_ids'),
+                  db.raw('u_tag_names(threads.id) as tag_names')
                 )
-               .from('threads')
+               .from('t_child_list')
+               .join('threads', 't_child_list.id', '=', 'threads.dirtree_id')
                .join('contents', 'threads.contents_id', '=', 'contents.id')
-               .join('dirtree', 'threads.dirtree_id', '=', 'dirtree.id')
                .where('threads.visibled', true)
                .orderBy('threads.first_sort_key', 'asc')
                .orderBy('threads.second_sort_key', 'asc')
@@ -58,54 +85,24 @@ async function get_index(node, tags, nodeWord,  start,len, db) {
                .orderBy('id', 'desc')
                .limit(len)
                .offset(start);
-  if (node === ''){
-    // 全ノード対象
-    if (tags.length === 0) {
-      // タグが指定されていない場合
-      // DO NOTHING
-    } else {
-      // タグが指定されている場合
-      tx = tx
-            .join(
-              database.select('map_thread_tag.thread_id as thread_id')
-                  .from('map_thread_tag')
-                  .join('tags', 'map_thread_tag.tag_id', '=', 'tags.id')
-                  .whereIn('tags.tag_id', tags)
-                  .groupBy('map_thread_tag.thread_id')
-                  .havingRaw('count(tags.id) = ?', [tags.length])
-                  .clone()
-                  .as('filtered_threads'),
-              'threads.id','=', 'filtered_threads.thread_id'
-            )
-    }
-    if (nodeWord !== '') {
-      nodeWord = nodeWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-      tx = tx
-            .join('dirs', 'dirtree.child_id', '=', 'dirs.id')
-            .where('dirs.display_name', 'like', `%${nodeWord}%`)
-    }
-  }else{
-    // 指定のノード対象
+  if (tags.length > 0) {
+    tx = tx.join(
+            db.select('map_thread_tag.thread_id as thread_id')
+                .from('map_thread_tag')
+                .join('tags', 'map_thread_tag.tag_id', '=', 'tags.id')
+                .whereIn('tags.tag_id', tags)
+                .groupBy('map_thread_tag.thread_id')
+                .havingRaw('count(tags.id) = ?', [tags.length])
+                .clone()
+                .as('filtered_threads'),
+            'threads.id','=', 'filtered_threads.thread_id'
+          )
+  }
+  if (nodeWord !== '') {
+    nodeWord = nodeWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
     tx = tx
-          .join('dirs', 'dirtree.child_id', '=', 'dirs.id')
-          .where('dirs.dir_id', node)
-    if (tags.length === 0) {
-      // DO NOTHING
-    }else{
-      tx = tx
-            .join(
-              database.select('map_thread_tag.thread_id as thread_id')
-                  .from('map_thread_tag')
-                  .join('tags', 'map_thread_tag.tag_id', '=', 'tags.id')
-                  .whereIn('tags.tag_id', tags)
-                  .groupBy('map_thread_tag.thread_id')
-                  .havingRaw('count(tags.id) = ?', [tags.length])
-                  .clone()
-                  .as('filtered_threads'),
-              'threads.id','=', 'filtered_threads.thread_id'
-            )
-    }
-    // nodeWordは無視
+          .join('dirs', 't_child_list.child_id', '=', 'dirs.id')
+          .where('dirs.display_name', 'like', `%${nodeWord}%`)
   }
   data = await tx;
   // formatting
@@ -148,6 +145,7 @@ export default async function index(app, main, api, subdir, moduleName, settings
     const startStr = req.query.start || '0';
     const lenStr = req.query.len || '50';
     const nodeWord = req.query.nodeWord || '';
+    const subTree = req.query.subTree === '1';
     let start = utils.parseSafeInt(startStr, 0);
     let len = utils.parseSafeInt(lenStr, 50);
     if (start < 0) start = 0;
@@ -155,7 +153,7 @@ export default async function index(app, main, api, subdir, moduleName, settings
     // safety
     if (len > 1000) len = 1000;
     let data = await database.transaction(async (tx) => {
-      return await get_index(node, tags, nodeWord, start, len, tx);
+      return await get_index(node, tags, nodeWord, subTree, start, len, tx);
     });
     res.json(data);
   });
