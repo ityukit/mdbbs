@@ -7,7 +7,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form>
+        <form onsubmit="return movethreadNode();">
           <h3 id="threadMoveTarget"></h3>
           <p id="threadMoveDescription"></p>
           <hr>
@@ -23,7 +23,7 @@
           <div class="text-end">{{ __ 'page.contents.thread.modal.move.moveEssDesc' }}</div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.thread.modal.move.modalClose' }}</button>
-            <button type="button" class="btn btn-primary" id="threadMoveSubmit" onclick="return movethreadNode();">
+            <button type="submit" class="btn btn-primary" id="threadMoveSubmit">
               <span id="threadDoMoveText">{{ __ 'page.contents.thread.modal.move.doMove' }}</span>
               <span id="threadDoMoveSpinner" class="d-none">
                 <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>

@@ -124,12 +124,21 @@ page:
           previewEmpty: "内容が空です"
           previewLoading: "プレビューを読み込み中..."
           previewError: "プレビューの読み込みに失敗しました"
+          threadCreateTargetName: "スレッド作成先ノード: {0}"
+          threadCreateTargetDesc: "ノード [ {0} ] の下に新しいスレッドを作成します"
+          contentDetail: "詳細設定"
+          contentFirstSortKey: "最初のソートキー"
+          contentSecondSortKey: "第二のソートキー"
+          threadCreateTargetNameRoot: "ルート"
+          threadCreateTargetDescRoot: "/"
+          createError: "スレッドの作成に失敗しました"
+          noNodeError: "ノードが指定されていません"
         rename:
 
     tagCloud:
       noTags: "タグが見つかりませんでした"
       currentNode: "現在のノード"
-      rootNode: "ルートノード"
+      rootNode: "全体"
     breadcrumb:
       root: "(すべて)"
       notFound: "見つかりませんでした"

@@ -252,8 +252,12 @@
     const treeString = $('#treeKeyword').val();
     const treeid = $('#tree').tree('getSelectedNode') ? $('#tree').tree('getSelectedNode').id : '';
     const tagsids = [];//Object.keys(localStorage.getItem('contents-tag-dashboard') ? JSON.parse(localStorage.getItem('contents-tag-dashboard')) : {});
+    const tagchk = {};
     for(const tag of $("#tags span[data-tag-id]")) {
-      tagsids.push(tag.getAttribute('data-tag-id'));
+      const id = tag.getAttribute('data-tag-id');
+      if (tagchk[id]) continue;
+      tagsids.push(id);
+      tagchk[id] = true;
     }
     const tagsid = tagsids.map(id => encodeURIComponent(id)).join('+');
     const showSubItems = $('#treeShowSubItems').is(':checked');
@@ -406,6 +410,9 @@
   }
   function addTag(tag){
     if (!tag || !tag.id || !tag.name) {
+      return;
+    }
+    if ($(`#tags span[data-tag-id="${tag.id}"]`).length > 0) {
       return;
     }
     $("#tags").append(
@@ -764,10 +771,20 @@
         }
       });
     });
-    $('#threadCreate').on('shown.bs.modal', function () {
+    $('#threadCreate').on('show.bs.modal', function () {
       threadCreateTargetId = '';
+      threadCreateTargetName = '';
+      threadCreateTargetTree = '';
       if ($("#tree").tree('getSelectedNode')) {
         threadCreateTargetId = $("#tree").tree('getSelectedNode').id;
+        threadCreateTargetName = $("#tree").tree('getSelectedNode').name;
+        let c = $("#tree").tree('getSelectedNode');
+        const r = []
+        while(c.parent) {
+          r.unshift(c.name);
+          c = c.parent;
+        }
+        threadCreateTargetTree = r.join(" / ");
       }
     });
   });
@@ -909,7 +926,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form>
+        <form onsubmit="return addTreeNode();">
           <h3 id="treeAddTarget"></h3>
           <p id="treeAddDescription"></p>
           <hr>
@@ -941,7 +958,7 @@
           <div class="text-end">{{ __ 'page.contents.tree.addEssDesc' }}</div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.tree.modalClose' }}</button>
-            <button type="button" class="btn btn-primary" id="treeAddSubmit" onclick="return addTreeNode();">
+            <button type="submit" class="btn btn-primary" id="treeAddSubmit">
               <span id="treeDoAddText">{{ __ 'page.contents.tree.doAdd' }}</span>
               <span id="treeDoAddSpinner" class="d-none">
                 <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
@@ -963,7 +980,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form>
+        <form onsubmit="return moveTreeNode();">
           <h3 id="treeMoveTarget"></h3>
           <p id="treeMoveDescription"></p>
           <hr>
@@ -979,7 +996,7 @@
           <div class="text-end">{{ __ 'page.contents.tree.moveEssDesc' }}</div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.tree.modalClose' }}</button>
-            <button type="button" class="btn btn-primary" id="treeMoveSubmit" onclick="return moveTreeNode();">
+            <button type="submit" class="btn btn-primary" id="treeMoveSubmit">
               <span id="treeDoMoveText">{{ __ 'page.contents.tree.doMove' }}</span>
               <span id="treeDoMoveSpinner" class="d-none">
                 <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
@@ -1001,7 +1018,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form>
+        <form onsubmit="return renameTreeNode();">
           <h3 id="treeRenameTarget"></h3>
           <p id="treeRenameDescription"></p>
           <hr>
@@ -1039,7 +1056,7 @@
           <div class="text-end">{{ __ 'page.contents.tree.renameEssDesc' }}</div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.tree.modalClose' }}</button>
-            <button type="button" class="btn btn-primary" id="treeRenameSubmit" onclick="return renameTreeNode();">
+            <button type="submit" class="btn btn-primary" id="treeRenameSubmit">
               <span id="treeDoRenameText">{{ __ 'page.contents.tree.doRename' }}</span>
               <span id="treeDoRenameSpinner" class="d-none">
                 <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>

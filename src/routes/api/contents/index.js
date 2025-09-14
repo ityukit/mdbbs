@@ -33,21 +33,31 @@ async function get_index(node, tags, nodeWord, subTree, start, len, db) {
     }
     dir_id = chk[0].id;
   }
+  const addRoot = dir_id === -1 ? true : false;
   if (subTree){
     // get subtree ids
     tx = db.queryBuilder().withRecursive('t_child_list', (qb) => {
-      qb.select('id','child_id','parent_id').from('dirtree').where('parent_id', dir_id)
-        .unionAll((qb) => {
+      let d = qb.select('id','child_id','parent_id').from('dirtree').where('child_id', dir_id);
+      if (addRoot) {
+        d = d.unionAll((qb) => {
+          qb.select(db.raw('-1 as id,-1 as child_id,-2 as parent_id'))
+        })
+      }
+      d = d.unionAll((qb) => {
           qb.select('dirtree.id','dirtree.child_id','dirtree.parent_id').from('dirtree')
             .join('t_child_list', 'dirtree.parent_id', '=', 't_child_list.child_id')
         });
     })
   }else{
     tx = db.queryBuilder().with('t_child_list', (qb) => {
-      qb.select('id','child_id','parent_id').from('dirtree').where('parent_id', dir_id);
+      let d = qb.select('id','child_id','parent_id').from('dirtree').where('child_id', dir_id);
+      if (addRoot) {
+        d = d.unionAll((qb) => {
+          qb.select(db.raw('-1 as id,-1 as child_id,-2 as parent_id'))
+        })
+      }
     })
   }
-
 
   tx = tx.select(
                   'threads.thread_id as id',

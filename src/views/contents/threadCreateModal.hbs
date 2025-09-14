@@ -7,7 +7,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form>
+        <form class="row g-3" id="threadCreateForm" onsubmit="return threadCreateModal_createThread()">
           <h3 id="threadCreateTarget"></h3>
           <p id="threadCreateDescription"></p>
           <hr>
@@ -44,10 +44,22 @@
               </select>
             </div>
           </div>
+          <hr>
+          <p>{{ __ 'page.contents.thread.modal.create.contentDetail' }}</p>
+          <div>
+            <div class="col">
+              <label for="threadCreateFirstSortKey" class="form-label">{{ __ 'page.contents.thread.modal.create.contentFirstSortKey' }}</label>
+              <input type="number" class="form-control" id="threadCreateFirstSortKey" step="1" max="999999999" min="-999999999">
+            </div>
+            <div class="col">
+              <label for="threadCreateSecondSortKey" class="form-label">{{ __ 'page.contents.thread.modal.create.contentSecondSortKey' }}</label>
+              <input type="text" class="form-control" id="threadCreateSecondSortKey">
+            </div>
+          </div>
           <div class="text-end">{{ __ 'page.contents.thread.modal.create.threadEssDesc' }}</div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.thread.modal.create.modalClose' }}</button>
-            <button type="button" class="btn btn-primary" id="threadCreateSubmit" onclick="return createThread();">
+            <button type="submit" class="btn btn-primary" id="threadCreateSubmit">
               <span id="threadDoCreateText">{{ __ 'page.contents.thread.modal.create.doCreate' }}</span>
               <span id="threadDoCreateSpinner" class="d-none">
                 <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
@@ -61,6 +73,63 @@
   </div>
 </div>
 <script>
+  function threadCreateModal_createThread() {
+    const title = document.getElementById('threadCreateTitle').value;
+    const contentTitle = document.getElementById('threadCreateContentTitle').value;
+    const content = document.getElementById('threadCreateContent').value;
+    $("#threadCreateSubmit").prop("disabled", true);
+    $("#threadDoCreateText").addClass("d-none");
+    $("#threadDoCreateSpinner").removeClass("d-none");
+    let tags = $('#threadCreateTag').val() || [];
+    tags = tags.map(tag => {
+      if (tag.startsWith('new:')) {
+        return { tag_id: null, display_name: tag.slice(4) };
+      } else {
+        return { tag_id: tag, display_name: null };
+      }
+    });
+    const firstSortKey = parseInt(document.getElementById('threadCreateFirstSortKey').value) || 0;
+    const secondSortKey = document.getElementById('threadCreateSecondSortKey').value || '';
+    $.ajax({
+      type: 'POST',
+      url: '{{ baseUrl }}/api/contents/threadCreate',
+      data: {
+        nodeId: threadCreateTargetId,
+        title: title,
+        contentTitle: contentTitle,
+        content: content,
+        parser: 'default',
+        tags: tags,
+        firstSortKey: firstSortKey,
+        secondSortKey: secondSortKey,
+        _csrf: '{{_csrf}}'
+      },
+      dataType: 'json',
+      success: function(data) {
+        if (data && !data.error) {
+          // 作成成功
+          // TODO: スレッド作成成功時の処理
+          // modalを閉じる
+          $('#threadCreate').modal('hide');
+          // reload
+          location.reload();          
+        }else{
+          // TODO: スレッド作成失敗時の処理
+          alert('{{ __ "page.contents.thread.modal.create.createError" }}');
+        }
+      },
+      error: function() {
+        // TODO: エラーハンドリング
+        alert('{{ __ "page.contents.thread.modal.create.createError" }}');
+      },
+      complete: function() {
+        $("#threadCreateSubmit").prop("disabled", false);
+        $("#threadDoCreateText").removeClass("d-none");
+        $("#threadDoCreateSpinner").addClass("d-none");
+      }
+    });
+    return false; // フォーム送信をキャンセル
+  }
   function threadCreateModal_previewContent() {
     const content = document.getElementById('threadCreateContent').value;
     if (content.trim().length === 0) {
@@ -94,6 +163,28 @@
     });
   }
   let threadCreateTargetId = '';
+  let threadCreateTargetName = '';
+  let threadCreateTargetTree = '';
+  addEventListener("load", (event) => {
+    $('#threadCreate').on('shown.bs.modal', function (event) {
+      if (!threadCreateTargetId) {
+        threadCreateTargetName = '{{ __ "page.contents.thread.modal.create.threadCreateTargetNameRoot" }}';
+        threadCreateTargetTree = '{{ __ "page.contents.thread.modal.create.threadCreateTargetDescRoot" }}';
+      }
+      $('#threadCreateTarget').text(format_string('{{ __ "page.contents.thread.modal.create.threadCreateTargetName" }}', [threadCreateTargetName]));
+      $('#threadCreateDescription').text(format_string('{{ __ "page.contents.thread.modal.create.threadCreateTargetDesc" }}', [threadCreateTargetTree]));
+      $('#threadCreateTitle').val('');
+      $('#threadCreateContentTitle').val('');
+      $('#threadCreateContent').val('');
+      $('#threadCreateContentPreview').text('{{ __ "page.contents.thread.modal.create.previewEmpty" }}');
+      $('#threadCreateTag').val(null).trigger('change');
+      $("#threadCreateSubmit").prop("disabled", false);
+      $("#threadDoCreateText").removeClass("d-none");
+      $("#threadDoCreateSpinner").addClass("d-none");
+      $('#threadCreateFirstSortKey').val('');
+      $('#threadCreateSecondSortKey').val('');
+    });
+  });
   // select2
   $(document).ready(function() {
     $('#threadCreateTag').select2({
@@ -154,12 +245,16 @@
         // Return `null` if the term should not be displayed
         return null;
       },
-      createSearchChoice: function (term, data) {
-        if ($(data).filter(function() {
-          return this.text.localeCompare(term)===0;
-        }).length===0) {
-          return {id:'new_tag_id_' + term, text:term};
+      createTag: function (params) {
+        var term = $.trim(params.term);
+        if (term === '') {
+          return null;
         }
+        return {
+          id: 'new:' + term,
+          text: term,
+          newTag: true // add additional parameters
+        };
       },
     });
     let threadCreate__tagDropdownTimer = null;

@@ -26,6 +26,9 @@ async function get_coutents_count(cid,db){
       .from('contents_list')
       .where({ child_id: cid })
       .unionAll((qb) => {
+        qb.select(db.raw('-1 as id,-1 as child_id,-2 as parent_id'))
+      })
+      .unionAll((qb) => {
         qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
           .from('t_contents_list')
           .join('contents_list', 't_contents_list.child_id', '=', 'contents_list.parent_id')
@@ -40,6 +43,9 @@ async function get_contents(cid,listmax,db) {
     qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
       .from('contents_list')
       .where({ child_id: cid })
+      .unionAll((qb) => {
+        qb.select(db.raw('-1 as id,-1 as child_id,-2 as parent_id'))
+      })
       .unionAll((qb) => {
         qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
           .from('t_contents_list')
@@ -91,6 +97,9 @@ async function get_contents(cid,listmax,db) {
       qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
         .from('contents_list')
         .where({ child_id: cid })
+        .unionAll((qb) => {
+          qb.select(db.raw('-1 as id,-1 as child_id,-2 as parent_id'))
+        })
         .unionAll((qb) => {
           qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
             .from('t_contents_list')
