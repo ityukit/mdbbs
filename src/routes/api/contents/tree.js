@@ -20,6 +20,7 @@ async function get_tree_traverse(id, currentDepth, maxDepth, db) {
                             .from('dirs')
                             .join('dirtree', 'dirtree.child_id','=', 'dirs.id')
                             .where('dirtree.parent_id', id)
+                            .where('dirs.id ', '>', 0)
                             .orderBy('dirs.first_sort_key', 'asc')
                             .orderBy('dirs.second_sort_key', 'asc')
                             .orderBy('dirs.display_name')){
@@ -81,6 +82,7 @@ async function get_tree_retraverse(id, dir_id, display_name, load_on_demand, db)
                             .from('dirs')
                             .join('dirtree', 'dirtree.parent_id','=', 'dirs.id')
                             .where('dirtree.child_id', parentId)
+                            .where('dirs.id ', '>', 0)
                             .orderBy('dirs.first_sort_key', 'asc')
                             .orderBy('dirs.second_sort_key', 'asc')
                             .orderBy('dirs.display_name').limit(1);
@@ -122,6 +124,7 @@ async function get_tree_retraverse_full(id, dir_id, display_name, load_on_demand
                             .from('dirs')
                             .join('dirtree', 'dirtree.parent_id','=', 'dirs.id')
                             .where('dirtree.child_id', parentId)
+                            .where('dirs.id ', '>', 0)
                             .orderBy('dirs.first_sort_key', 'asc')
                             .orderBy('dirs.second_sort_key', 'asc')
                             .orderBy('dirs.display_name').limit(1);
@@ -171,6 +174,7 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
                             .from('dirs')
                             .join('dirtree', 'dirs.id','=', 'dirtree.child_id')
                             .where({'dirtree.parent_id': start_parentId})
+                            .where('dirs.id ', '>', 0)
                             .orderBy('dirs.first_sort_key', 'asc')
                             .orderBy('dirs.second_sort_key', 'asc')
                             .orderBy('dirs.display_name')) {
@@ -190,6 +194,7 @@ async function get_tree(root, keyword, currentDepth, maxDepth, db) {
     const tagrets = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
                       .from('dirs')
                       .where('dirs.display_name', 'like', `%${keyword}%`)
+                      .where('dirs.id ', '>', 0)
                       .orderBy('dirs.first_sort_key', 'asc')
                       .orderBy('dirs.second_sort_key', 'asc')
                       .orderBy('dirs.display_name');
@@ -210,6 +215,7 @@ async function get_tree_by_id(id, db) {
   const tagrets = await db.select('dirs.id', 'dirs.dir_id', 'dirs.display_name')
                     .from('dirs')
                     .where('dirs.dir_id', id)
+                    .where('dirs.id ', '>', 0)
                     .orderBy('dirs.first_sort_key', 'asc')
                     .orderBy('dirs.second_sort_key', 'asc')
                     .orderBy('dirs.display_name');
