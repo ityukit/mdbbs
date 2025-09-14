@@ -183,7 +183,25 @@ class RubyPlugin{
         };
         // console.log(JSON.stringify(parent.children[index]));
       };
-      visit(tree, RubyPlugin.isRuby, visitor);
+      const visitor2 = (node,index,parent) => {
+        const ruby = RubyPlugin.rubyParse(node.value) || [];
+        parent.children[index] = {
+          type: 'ruby',
+          data: ruby
+            .map(r => {
+              return {
+                properties: {
+                  bText: r.bText,
+                  rubyText: r.rubyText,
+                  ruby: r.ruby,
+                  aText: r.aText
+                },
+                children: [],
+              };
+          }),
+        };
+      }
+      visit(tree, RubyPlugin.isRuby, visitor2);
     };
   }
   static isRuby(node){
@@ -191,6 +209,7 @@ class RubyPlugin{
     return RubyPlugin.isRubyParagraph(node);
   }
   static isTextParagraph(node) {
+    return node.type === 'text';
     return (
       node.type == "paragraph" &&
       node.children &&
@@ -199,7 +218,8 @@ class RubyPlugin{
     );
   }
   static isRubyParagraph(node) {
-    const r = RubyPlugin.rubyParse(node.children[0].value);
+    //const r = RubyPlugin.rubyParse(node.children[0].value);
+    const r = RubyPlugin.rubyParse(node.value);
     if (r === null) return false;
     //if (r.length < 1) return false;
     //if (r.length === 1 && r[0].ruby === null) return false;
@@ -209,11 +229,7 @@ class RubyPlugin{
     return true;
   }
 
-  static rehypeHandler(h, node){
-    const bText = node.properties.bText;
-    const ruby = node.properties.ruby;
-    const rubyText = node.properties.rubyText;
-    const aText = node.properties.aText;
+  static rehypeHandlerOnce(bText, rubyText, ruby, aText){
     if (ruby === null){
       return [{
         type: "text",
@@ -298,6 +314,15 @@ class RubyPlugin{
     }
     return r;
   }
+  static rehypeHandler(h, node){
+    let r = [];
+    if (!node.data || node.data.length < 1) return [];
+    for(const d of node.data){
+      const rr = RubyPlugin.rehypeHandlerOnce(d.properties.bText, d.properties.rubyText, d.properties.ruby, d.properties.aText);
+      r.push(...rr);
+    }
+    return r;
+  }
 }
 
 function footnoteRemarkHandler(options) {
@@ -343,9 +368,9 @@ class ParserDefault{
                         .use(remarkMath)
                         .use(remarkBreaks)
                         .use(footnoteRemarkHandler, {id: id})
+                        .use(RubyPlugin.plugin)
                         //.use(remarkRuby)
                         //.use(rubyAttacher)
-                        .use(RubyPlugin.plugin)
                         .use(remark2rehype, {
                         //  Headers: {ruby: rubyHeader}
                           handlers: {ruby: RubyPlugin.rehypeHandler}
@@ -398,7 +423,52 @@ class ParserDefault{
 const instance = new ParserDefault();
 await instance._init();
 /*
-const processor = instance.processor;
+    let titles = [];
+    const processor = await unified()
+                        .use(markdown)
+                        .use(remarkGfm)
+                        .use(remarkMath)
+                        .use(remarkBreaks)
+                        .use(RubyPlugin.plugin)
+                        .use(footnoteRemarkHandler, {id: '-1'})
+                        //.use(remarkRuby)
+                        //.use(rubyAttacher)
+                        .use(remark2rehype, {
+                        //  Headers: {ruby: rubyHeader}
+                          handlers: {ruby: RubyPlugin.rehypeHandler}
+                        })
+                        .use(rehypeMathjax)
+                        .use(rehypeHighlight)
+                        .use(rehypeSlug, {prefix : `user-title--1-`})
+                        .use(rehypeRewrite, {
+                          rewrite: (node, index, parent) => {
+                            // get titles
+                            const rank = headingRank(node);
+                            if (rank && node.children && node.children.length > 0) {
+                              let titleText = '';
+                              for(const c of node.children) {
+                                if (c.type === 'text') {
+                                  titleText += c.value;
+                                }
+                              }
+                              if (titleText.length > 50) {
+                                titleText = titleText.substring(0, 50) + '...';
+                              }
+                              titles.push({
+                                depth: rank,
+                                title: titleText,
+                                link: node.properties.id,
+                              });
+                            }
+                          }
+                        })
+                        .use(rehypeAutolinkHeadings,{
+                          behavior: 'append',
+                          content(node) {
+                            return h('span', {class: 'md-icon-link material-icons-outlined'}, 'link');
+                          }
+                        })
+                        .use(html);
 var input = "とりあえず｜これはルビです《ルビテキスト》";
 input=`
 あああ
@@ -417,6 +487,6 @@ const transformed = await processor.run(parsed);
 console.log(JSON.parse(JSON.stringify(inspect(transformed))));
 console.log(await processor.process(input));
 console.log(processor.stringify(transformed));
-console.log(await instance.parse(input));
+//console.log(await instance.parse(input));
 */
 export default instance;
