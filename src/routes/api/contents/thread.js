@@ -26,9 +26,6 @@ async function get_coutents_count(cid,db){
       .from('contents_list')
       .where({ child_id: cid })
       .unionAll((qb) => {
-        qb.select(db.raw('-1 as id,-1 as child_id,-2 as parent_id'))
-      })
-      .unionAll((qb) => {
         qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
           .from('t_contents_list')
           .join('contents_list', 't_contents_list.child_id', '=', 'contents_list.parent_id')
@@ -43,9 +40,6 @@ async function get_contents(cid,listmax,db) {
     qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
       .from('contents_list')
       .where({ child_id: cid })
-      .unionAll((qb) => {
-        qb.select(db.raw('-1 as id,-1 as child_id,-2 as parent_id'))
-      })
       .unionAll((qb) => {
         qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
           .from('t_contents_list')
@@ -97,9 +91,6 @@ async function get_contents(cid,listmax,db) {
       qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
         .from('contents_list')
         .where({ child_id: cid })
-        .unionAll((qb) => {
-          qb.select(db.raw('-1 as id,-1 as child_id,-2 as parent_id'))
-        })
         .unionAll((qb) => {
           qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
             .from('t_contents_list')
@@ -216,11 +207,14 @@ async function get_thread_by_id(cid, subtree,listOnly, treeOnly,listMax, db) {
 export default async function thread(app, main, api, subdir, moduleName, settings) {
   // ツリー構造取得処理
   api.get('/contents/thread/:id', async (req, res) => {
-    const contentId = req.params.id;
+    const contentId = utils.parseSafeInt(req.params.id) || 0;
     let subtree = utils.parseSafeInt(req.query?.subtree) || 0;
     const listOnly = req.query?.listOnly === '1';
     const treeOnly = req.query?.treeOnly === '1';
 
+    if (contentId < 1) {
+      return res.status(400).json({ error: 'Invalid content ID' });
+    }
     // safety
     if (subtree < 0) {
       subtree = 0;

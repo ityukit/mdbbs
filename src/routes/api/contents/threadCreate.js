@@ -33,6 +33,16 @@ async function createThread(nodeId, title, contentTitle, content, parser, tags, 
     updated_user_id: req.session.user.id,
     created_user_id: req.session.user.id,
   }).returning('id');
+  // insert to contents_list
+  await tx('contents_list').insert({
+    parent_id: -1,
+    child_id: contentId[0].id,
+  });
+  // insert to contents_tree
+  await tx('contents_tree').insert({
+    parent_id: -1,
+    child_id: contentId[0].id,
+  });
   // get dirtree id
   let dirtreeId = -1;
   if (parentId !== -1) {

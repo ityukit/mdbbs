@@ -14,7 +14,7 @@ async function get_indexCount(node, nodeWord, tags, subTree, db) {
     }
     dir_id = chk[0].id;
   }
-  const addRoot = dir_id === -1 ? true : false;
+  const addRoot = false; //  dir_id === -1 ? true : false;
   if (subTree){
     // get subtree ids
     tx = db.queryBuilder().withRecursive('t_child_list', (qb) => {

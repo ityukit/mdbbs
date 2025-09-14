@@ -39,7 +39,7 @@ async function getThreadParams(threadId,tx){
     .join('dirs', 'dirs.id', '=', 'dirtree.child_id')
     .where('threads.thread_id', threadId)
     .first();
-
+    
    if (!thread) return null;
 
    const tagsData = await tx.select('tags.tag_id', 'tags.display_name')

@@ -17,6 +17,20 @@ export function up(knex) {
     table.timestamp('created_at', { precision: 6 }).notNullable().defaultTo(knex.fn.now(6));
 
     table.index(['display_name']);
+  }).then(() => {
+    // create root entry
+    return knex('dirs').insert({
+      id: -1,
+      dir_id: 'root',
+      display_name: 'Root',
+      description: 'Root Directory',
+      visibled: true,
+      enabled: true,
+      first_sort_key: 0,
+      second_sort_key: '',
+      updated_user_id: -1,
+      created_user_id: -1,
+    });
   });
 }
 

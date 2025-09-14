@@ -9,6 +9,13 @@ export function up(knex) {
 
     table.unique(['parent_id', 'child_id']);
     table.index(['child_id']);
+  }).then(() => {
+    // create root entry
+    return knex('dirtree').insert({
+      id: -1,
+      parent_id: -2,
+      child_id: -1,
+    });
   });
 }
 
