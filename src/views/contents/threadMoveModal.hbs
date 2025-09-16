@@ -1,0 +1,121 @@
+<!-- thread move -->
+<div class="modal fade" id="threadMove" data-bs-keyboard="false" tabindex="-1" aria-labelledby="threadMoveLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="threadMoveLabel">{{ __ 'page.contents.thread.modal.move.title' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="return threadUpdateModal_moveThread();">
+          <h3 id="threadMoveTarget"></h3>
+          <p id="threadMoveDescription"></p>
+          <hr>
+          <p id="threadMoveNameCurrent"></p>
+          <p id="threadMoveName"></p>
+          <div class="row">
+            <div id="threadMoveTargetTree" class="col align-items-center">
+              <div id="threadMoveTree" data-url="{{baseUrl}}/api/contents/tree"></div>
+            </div>
+          </div>
+          <div class="text-end">{{ __ 'page.contents.thread.modal.move.moveEssDesc' }}</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.thread.modal.move.modalClose' }}</button>
+            <button type="submit" class="btn btn-primary" id="threadMoveSubmit">
+              <span id="threadDoMoveText">{{ __ 'page.contents.thread.modal.move.doMove' }}</span>
+              <span id="threadDoMoveSpinner" class="d-none">
+                <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                {{ __ 'page.contents.thread.modal.move.moving' }}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  function threadUpdateModal_moveThread(){
+    const submit = $('#threadMoveSubmit');
+    const text = $('#threadDoMoveText');
+    const spinner = $('#threadDoMoveSpinner');
+    submit.prop('disabled', true);
+    text.addClass('d-none');
+    spinner.removeClass('d-none');
+    const node = $("#threadMoveTree").tree('getSelectedNode');
+    let targetId = '';
+    if (node) {
+      targetId = node.id;
+    }
+    $.ajax({
+      type: "POST",
+      url: "{{baseUrl}}/api/contents/threadMove",
+      data: {
+        id: threadMoveTargetId,
+        dir_id: targetId,
+        _csrf: '{{_csrf}}'
+      },
+      dataType: "json",
+      success: function(response) {
+        if (response.error === undefined) {
+          location.reload();
+        } else {
+          alert(response.error);
+          submit.prop('disabled', false);
+          text.removeClass('d-none');
+          spinner.addClass('d-none');
+        }
+      },
+      error: function() {
+        alert("{{ __ 'page.contents.thread.modal.move.errorMove' }}");
+        submit.prop('disabled', false);
+        text.removeClass('d-none');
+        spinner.addClass('d-none');
+      }
+    });
+    return false;
+  }
+  let threadMoveTargetId = '';
+  let threadMoveTargetName = '';
+  let threadMoveTargetTree = '';
+  function threadUpdateModal_moveTargetShow() {
+    const tree = [];
+    let node = $("#threadMoveTree").tree('getSelectedNode');
+    if (node){
+      while (node.parent) {
+        tree.unshift(node.name);
+        node = node.parent;
+      }
+    }
+    let descName = tree.join(" / ");
+    if (tree.length === 0) {
+      descName = "{{ __ 'page.contents.tree.root' }}";
+    }
+    $('#threadMoveNameCurrent').text(format_string('{{ __ "page.contents.thread.modal.move.moveName" }} ', descName));
+  }
+  addEventListener("load", (event) => {
+    const icon1 = document.createElement("i");
+    icon1.classList.add("material-icons");
+    icon1.textContent = "chevron_right";
+    const icon2 = document.createElement("i");
+    icon2.classList.add("material-icons");
+    icon2.textContent = "expand_more";
+    $('#threadMoveTree').tree({
+      closedIcon: icon1,
+      openedIcon: icon2,
+      saveState: false,
+      showEmptyFolder: true
+    });
+    $('#threadMoveTree').on('tree.select', function(event) {
+      threadUpdateModal_moveTargetShow();
+    });
+    $('#threadMove').on('shown.bs.modal', function (event) {
+      $('#threadMoveTarget').text(format_string('{{ __ "page.contents.thread.modal.move.moveTarget" }} ',threadMoveTargetName));
+      $('#threadMoveDescription').text(format_string('{{ __ "page.contents.thread.modal.move.moveTargetCurrent" }}', threadMoveTargetTree));
+      $("#treeMoveTree").tree("loadDataFromUrl","{{baseUrl}}/api/contents/tree");
+      $("#treeMoveTree").tree("deselectAll");
+      $("#treeMoveTree").tree("selectNode", $("#tree").tree("getNodeById", threadMoveTargetId));
+      threadUpdateModal_moveTargetShow();
+    });
+  });
+</script>

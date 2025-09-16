@@ -27,8 +27,11 @@
         ${description}
     `;
   }
-  function threadMoveStart(id){
+  function threadMoveStart(id,name,tree){
     $('#threadMove').modal('show');
+    threadMoveTargetId = id;
+    threadMoveTargetName = name;
+    threadMoveTargetTree = tree;
   }
   function threadUpdateStart(id){
     threadUpdateTargetId = id;
@@ -37,6 +40,7 @@
 
   function generateContentOnce(data) {
       const breadcrumb = [];
+      const treeNames = [];
       for(let i=0;i<data.contents.dir_ids.length;i++){
         const dirId = data.contents.dir_ids[i];
         const dirName = data.contents.dir_names[i];
@@ -44,6 +48,7 @@
           `${escape_html(dirName)}`
         );
         breadcrumb.push(item);
+        treeNames.push(escape_html(dirName));
       }
       // root not set
       const item = $("<li>").addClass("breadcrumb-item active").html(
@@ -76,7 +81,7 @@
                   </button>
                   <ul class="dropdown-menu">
                     <li><a class="dropdown-item" onclick="threadUpdateStart('${data.id}')">{{ __ "page.contents.thread.menu.update" }}</a></li>
-                    <li><a class="dropdown-item" onclick="threadMoveStart('${data.id}')">{{ __ "page.contents.thread.menu.move" }}</a></li>
+                    <li><a class="dropdown-item" onclick="threadMoveStart('${data.id}','${escape_html(data.title)}','/ ${escape_html(treeNames.join(' / '))}')">{{ __ "page.contents.thread.menu.move" }}</a></li>
                   </ul>
                 </div>
                 &nbsp;
@@ -1086,9 +1091,9 @@
     </div>
   </div>
 </div>
-{{> contents/threadMenuModal }}
 {{> contents/threadCreateModal }}
 {{> contents/threadUpdateModal }}
+{{> contents/threadMoveModal }}
 
 <!-- main -->
 <div class="container-fluid">
