@@ -122,7 +122,15 @@ async function get_index(node, tags, nodeWord, subTree, start, len, db) {
     if (d.locked) continue;
     if (!d.enabled) continue;
     const contentesPartsAry = d.contents.split("\n");
-    const emitContents = contentesPartsAry.splice(12).length > 0;
+    let emitContents = contentesPartsAry.splice(12).length > 0;
+    if (!emitContents) {
+      const nextContents = await db.select('child_id').from('contents_list').where({ parent_id: d.cid }).limit(1);
+      if (nextContents.length > 0) emitContents = true;
+      if (!emitContents) {
+        const nextThreads = await db.select('child_id').from('contents_tree').where({ parent_id: d.cid }).limit(1);
+        if (nextThreads.length > 0) emitContents = true;
+      }
+    }
     const contentesParts = contentesPartsAry.join("\n");
     rdata.push({
       id: d.id,
