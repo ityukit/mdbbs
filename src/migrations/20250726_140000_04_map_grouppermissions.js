@@ -4,6 +4,7 @@ export function up(knex) {
 
     table.bigInteger('group_id').notNullable();
     table.bigInteger('permission_id').notNullable();
+    table.boolean('allow').notNullable().defaultTo(true); // true: allow, false: deny
 
     table.timestamp('created_at', { precision: 6 }).defaultTo(knex.fn.now(6));
 
