@@ -3,9 +3,12 @@ export function up(knex) {
     table.bigIncrements('id').primary();
     table.bigint('contents_id').notNullable();
     table.bigint('revision').notNullable();
+    table.text('title').notNullable();
+
     table.boolean('directed').notNullable().defaultTo(false);
     table.boolean('compressed').notNullable().defaultTo(false);
     table.binary('diff').notNullable();
+
     table.text('parser');
     table.text('description');
     table.bigint('created_user_id').notNullable();

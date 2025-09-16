@@ -1,6 +1,33 @@
 import { el } from 'date-fns/locale';
 import database from '../../../database.js';
 
+async function get_Alltags(nodeWord, maxCount, tagWord, db) {
+  let tags = null;
+
+  // Get all tags
+  let tx = db.select('tags.tag_id', 'tags.display_name')
+    .from('tags')
+    .where('tags.display_name', 'like', `%${nodeWord}%`)
+    .orWhere('tags.tag_id', 'like', `%${tagWord}%`)
+    .limit(maxCount);
+  if (nodeWord){
+    nodeWord = nodeWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    tx = tx.where('dirs.display_name', 'like', `%${nodeWord}%`)
+  }
+  if (tagWord){
+    tagWord = tagWord.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    tx = tx.where('tags.display_name', 'like', `%${tagWord}%`);
+  }
+  tags = await tx;
+
+  return tags.map(tag => {
+    return {
+      tag_id: tag.tag_id,
+      display_name: tag.display_name
+    };
+  });
+}
+
 async function get_tags(id, nodeWord, maxCount,tagWord,subTree, db) {
   let tags = null;
   let tx = null;
@@ -86,7 +113,7 @@ export default async function tagcloud(app, main, api, subdir, moduleName, setti
       } else {
         let ctags = [];
         if (root) ctags = await get_tags(root, nodeWord, maxCount, tagWord, subTree, tx);
-        let rtags = await get_tags('', nodeWord, maxCount, tagWord, true, tx);
+        let rtags = await get_Alltags(nodeWord, maxCount, tagWord, tx);
         return [
           { text: req.__('page.contents.tagCloud.currentNode'), children: ctags },
           { text: req.__('page.contents.tagCloud.rootNode'), children: rtags }

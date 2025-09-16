@@ -30,6 +30,10 @@
   function threadMoveStart(id){
     $('#threadMove').modal('show');
   }
+  function threadUpdateStart(id){
+    threadUpdateTargetId = id;
+    $('#threadUpdate').modal('show');
+  }
 
   function generateContentOnce(data) {
       const breadcrumb = [];
@@ -71,9 +75,8 @@
                     <span class="material-icons">menu</span>
                   </button>
                   <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" onclick="threadUpdateStart('${data.id}')">{{ __ "page.contents.thread.menu.update" }}</a></li>
                     <li><a class="dropdown-item" onclick="threadMoveStart('${data.id}')">{{ __ "page.contents.thread.menu.move" }}</a></li>
-                    <li><a class="dropdown-item" onclick="threadRenameStart('${data.id}')">{{ __ "page.contents.thread.menu.rename" }}</a></li>
-                    <li><a class="dropdown-item" onclick="threadDeleteStart('${data.id}')">{{ __ "page.contents.thread.menu.delete" }}</a></li>
                   </ul>
                 </div>
                 &nbsp;
@@ -1085,6 +1088,7 @@
 </div>
 {{> contents/threadMenuModal }}
 {{> contents/threadCreateModal }}
+{{> contents/threadUpdateModal }}
 
 <!-- main -->
 <div class="container-fluid">

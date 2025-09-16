@@ -29,7 +29,7 @@ export default {
   genDiff: async function genDiff(oldText, newText) {
     const d = await this.diffText(oldText, newText);
     if (!d) {
-      return null;
+      return {data:'', patched:false, comp:false}; // no diff
     }
     const plainD = Buffer.from(d,'utf8');
     const compNew = await compress.strcomp(newText);
@@ -56,6 +56,9 @@ export default {
   },
   extDiff: async function extDiff(Text, diff) {
     let rd = diff.data;
+    if (rd == '') {
+      return Text; // no diff
+    }
     if (diff.comp) {
       rd = await compress.strdecomp(rd);
       if (!rd) {

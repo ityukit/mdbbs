@@ -96,8 +96,7 @@ page:
       readMore: "続きを読む"
       menu:
         move: "スレッドを移動"
-        rename: "スレッドのタイトルを変更"
-        delete: "スレッドを削除"
+        update: "スレッドを更新"
       modal:
         move:
           title: "スレッドを移動"
@@ -134,7 +133,33 @@ page:
           threadCreateTargetDescRoot: "/"
           createError: "スレッドの作成に失敗しました"
           noNodeError: "ノードが指定されていません"
-        rename:
+        update:
+          title: "スレッドを更新"
+          threadTitle: "スレッドタイトル"
+          contentTitle: "コンテンツタイトル"
+          content: "内容"
+          contentPreview: "内容プレビュー"
+          threadTag: "タグ"
+          threadEssDesc: "* マークの内容は必須です"
+          doUpdate: "更新"
+          updating: "更新中..."
+          modalClose: "閉じる"
+          titleError: "タイトルに「 > 」を含めることはできません"
+          source: "ソース"
+          preview: "プレビュー"
+          previewEmpty: "内容が空です"
+          previewLoading: "プレビューを読み込み中..."
+          previewError: "プレビューの読み込みに失敗しました"
+          threadUpdateTargetName: "スレッド更新先ノード: {0}"
+          threadUpdateTargetDesc: "ノード [ {0} ] の下のスレッドを更新します"
+          contentDetail: "詳細設定"
+          contentFirstSortKey: "最初のソートキー"
+          contentSecondSortKey: "第二のソートキー"
+          threadUpdateTargetNameRoot: "ルート"
+          threadUpdateTargetDescRoot: "/"
+          updateError: "スレッドの更新に失敗しました"
+          noNodeError: "ノードが指定されていません"
+          loadError: "スレッド情報の読み込みに失敗しました"
 
     tagCloud:
       noTags: "タグが見つかりませんでした"

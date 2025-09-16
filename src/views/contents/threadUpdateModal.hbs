@@ -1,0 +1,313 @@
+<!-- thread update -->
+<div class="modal fade modal-xl" id="threadUpdate" data-bs-keyboard="false" tabindex="-1" aria-labelledby="threadUpdateLabel" data-bs-backdrop="static">
+  <div class="modal-dialog modal-fullscreen2">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="threadUpdateLabel">{{ __ 'page.contents.thread.modal.update.title' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form class="row g-3" id="threadUpdateForm" onsubmit="return threadUpdateModal_updateThread()">
+          <h3 id="threadUpdateTarget"></h3>
+          <p id="threadUpdateDescription"></p>
+          <hr>
+          <div class="row">
+            <div class="col-12 mb-3">
+              <label for="threadUpdateTitle" class="form-label">{{ __ 'page.contents.thread.modal.update.threadTitle' }}*</label>
+              <input type="text" class="form-control" id="threadUpdateTitle" required>
+            </div>
+            <div class="col-12 mb-3">
+              <label for="threadUpdateContentTitle" class="form-label">{{ __ 'page.contents.thread.modal.update.contentTitle' }}*</label>
+              <input type="text" class="form-control" id="threadUpdateContentTitle" required>
+            </div>
+            <ul class="nav nav-tabs" id="threadUpdateViewTab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="threadUpdateViewTab-source" data-bs-toggle="tab" data-bs-target="#threadUpdateViewTab-source-pane" type="button" role="tab" aria-controls="threadUpdateViewTab-source-pane" aria-selected="true">{{ __ 'page.contents.thread.modal.update.source' }}</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="threadUpdateViewTab-preview" data-bs-toggle="tab" data-bs-target="#threadUpdateViewTab-preview-pane" type="button" role="tab" aria-controls="threadUpdateViewTab-preview-pane" aria-selected="false" onclick="threadUpdateModal_previewContent()">{{ __ 'page.contents.thread.modal.update.preview' }}</button>
+              </li>
+            </ul>
+            <div class="tab-content" id="threadUpdateViewTabContent">
+              <div class="tab-pane fade show active" id="threadUpdateViewTab-source-pane" role="tabpanel" aria-labelledby="threadUpdateViewTab-source" tabindex="0">
+                <label for="threadUpdateContent" class="form-label">{{ __ 'page.contents.thread.modal.update.content' }}*</label>
+                <textarea class="form-control" id="threadUpdateContent" rows="6" required></textarea>
+              </div>
+              <div class="tab-pane fade" id="threadUpdateViewTab-preview-pane" role="tabpanel" aria-labelledby="threadUpdateViewTab-preview" tabindex="0">
+                <label for="threadUpdateContentPreview" class="form-label">{{ __ 'page.contents.thread.modal.update.contentPreview' }}</label>
+                <div id="threadUpdateContentPreview" class="border p-2 contents-preview"></div>
+              </div>
+            </div>
+            <div class="col-12 mb-3" id="threadUpdateViewTabTag">
+              <label for="threadUpdateTag" class="form-label">{{ __ 'page.contents.thread.modal.update.threadTag' }}</label>
+              <select class="form-control" multiple="multiple" id="threadUpdateTag">
+              </select>
+            </div>
+          </div>
+          <hr>
+          <p>{{ __ 'page.contents.thread.modal.update.contentDetail' }}</p>
+          <div>
+            <div class="col">
+              <label for="threadUpdateFirstSortKey" class="form-label">{{ __ 'page.contents.thread.modal.update.contentFirstSortKey' }}</label>
+              <input type="number" class="form-control" id="threadUpdateFirstSortKey" step="1" max="999999999" min="-999999999">
+            </div>
+            <div class="col">
+              <label for="threadUpdateSecondSortKey" class="form-label">{{ __ 'page.contents.thread.modal.update.contentSecondSortKey' }}</label>
+              <input type="text" class="form-control" id="threadUpdateSecondSortKey">
+            </div>
+          </div>
+          <div class="text-end">{{ __ 'page.contents.thread.modal.update.threadEssDesc' }}</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.thread.modal.update.modalClose' }}</button>
+            <button type="submit" class="btn btn-primary" id="threadUpdateSubmit">
+              <span id="threadDoUpdateText">{{ __ 'page.contents.thread.modal.update.doUpdate' }}</span>
+              <span id="threadDoUpdateSpinner" class="d-none">
+                <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                {{ __ 'page.contents.thread.modal.update.updating' }}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  function threadUpdateModal_updateThread() {
+    const title = document.getElementById('threadUpdateTitle').value;
+    const contentTitle = document.getElementById('threadUpdateContentTitle').value;
+    const content = document.getElementById('threadUpdateContent').value;
+    $("#threadUpdateSubmit").prop("disabled", true);
+    $("#threadDoUpdateText").addClass("d-none");
+    $("#threadDoUpdateSpinner").removeClass("d-none");
+    let tags = $('#threadUpdateTag').val() || [];
+    tags = tags.map(tag => {
+      if (tag.startsWith('new:')) {
+        return { tag_id: null, display_name: tag.slice(4) };
+      } else {
+        return { tag_id: tag, display_name: null };
+      }
+    });
+    const firstSortKey = parseInt(document.getElementById('threadUpdateFirstSortKey').value) || 0;
+    const secondSortKey = document.getElementById('threadUpdateSecondSortKey').value || '';
+    $.ajax({
+      type: 'POST',
+      url: '{{ baseUrl }}/api/contents/threadUpdate',
+      data: {
+        targetId: threadUpdateTargetId,
+        title: title,
+        contentTitle: contentTitle,
+        content: content,
+        parser: 'default',
+        tags: tags,
+        firstSortKey: firstSortKey,
+        secondSortKey: secondSortKey,
+        _csrf: '{{_csrf}}'
+      },
+      dataType: 'json',
+      success: function(data) {
+        if (data && !data.error) {
+          // 更新成功
+          // TODO: スレッド更新成功時の処理
+          // modalを閉じる
+          $('#threadUpdate').modal('hide');
+          // reload
+          location.reload();          
+        }else{
+          // TODO: スレッド更新失敗時の処理
+          alert('{{ __ "page.contents.thread.modal.update.updateError" }}');
+        }
+      },
+      error: function() {
+        // TODO: エラーハンドリング
+        alert('{{ __ "page.contents.thread.modal.update.updateError" }}');
+      },
+      complete: function() {
+        $("#threadUpdateSubmit").prop("disabled", false);
+        $("#threadDoUpdateText").removeClass("d-none");
+        $("#threadDoUpdateSpinner").addClass("d-none");
+      }
+    });
+    return false; // フォーム送信をキャンセル
+  }
+  function threadUpdateModal_previewContent() {
+    const content = document.getElementById('threadUpdateContent').value;
+    if (content.trim().length === 0) {
+      $('#threadUpdateContentPreview').text('{{ __ "page.contents.thread.modal.update.previewEmpty" }}');
+      return;
+    }
+    $('#threadUpdateContentPreview').text('{{ __ "page.contents.thread.modal.update.previewLoading" }}');
+    $.ajax({
+      type: 'POST',
+      url: '{{ baseUrl }}/api/contents/parse',
+      data: {
+        content: content,
+        parser: 'default',
+        _csrf: '{{_csrf}}'
+      },
+      dataType: 'json',
+      success: function(data) {
+        if (data && data.contentsparsed) {
+          $('#threadUpdateContentPreview').html(data.contentsparsed);
+          // highlight.js
+          document.querySelectorAll('#threadUpdateContentPreview pre code').forEach((block) => {
+            hljs.highlightElement(block);
+          });
+        } else {
+          $('#threadUpdateContentPreview').text('{{ __ "page.contents.thread.modal.update.previewError" }}');
+        }
+      },
+      error: function() {
+        $('#threadUpdateContentPreview').text('{{ __ "page.contents.thread.modal.update.previewError" }}');
+      }
+    });
+  }
+  let threadUpdateTargetId = '';
+  addEventListener("load", (event) => {
+    $('#threadUpdate').on('shown.bs.modal', function (event) {
+      $('#threadUpdateTitle').val('');
+      $('#threadUpdateContentTitle').val('');
+      $('#threadUpdateContent').val('');
+      $('#threadUpdateContentPreview').text('{{ __ "page.contents.thread.modal.update.previewEmpty" }}');
+      $('#threadUpdateTag').val(null).trigger('change');
+      $("#threadUpdateSubmit").prop("disabled", false);
+      $("#threadDoUpdateText").removeClass("d-none");
+      $("#threadDoUpdateSpinner").addClass("d-none");
+      $('#threadUpdateFirstSortKey').val('');
+      $('#threadUpdateSecondSortKey').val('');
+      $.ajax({
+        type: 'GET',
+        url: '{{ baseUrl }}/api/contents/threadInfo',
+        data: {
+          targetId: threadUpdateTargetId,
+        },
+        dataType: 'json',
+        success: function(data) {
+          if (data && !data.error) {
+            $('#threadUpdateTitle').val(data.title || '');
+            $('#threadUpdateTarget').text(format_string('{{ __ "page.contents.thread.modal.update.threadUpdateTargetName" }}',[ data.dirs[data.dirs.length - 1]?.name || '{{ __ "page.contents.thread.modal.update.threadUpdateTargetRoot" }}' ]));
+            $('#threadUpdateDescription').text(format_string('{{ __ "page.contents.thread.modal.update.threadUpdateTargetDesc" }}', [ " / " + data.dirs.map(d => d.name).join(' / ')]));
+            if (data.contents) {
+              $('#threadUpdateContentTitle').val(data.contents.title || '');
+              $('#threadUpdateContent').val(data.contents.contents || '');
+              $('#threadUpdateFirstSortKey').val(data.contents.firstSortKey || '');
+              $('#threadUpdateSecondSortKey').val(data.contents.secondSortKey || '');
+            }
+            if (data.tags && data.tags.length > 0) {
+              for (const tag of data.tags) {
+                if (tag && tag.id && tag.name) {
+                  // add option
+                  const newOption = new Option(tag.name, tag.id, true, true);
+                  $('#threadUpdateTag').append(newOption).trigger('change');
+                }
+              }
+            } else {
+              $('#threadUpdateTag').val(null).trigger('change');
+            }
+          } else {
+            alert('{{ __ "page.contents.thread.modal.update.loadError" }}');
+            $('#threadUpdate').modal('hide');
+          }
+        },
+        error: function() {
+          alert('{{ __ "page.contents.thread.modal.update.loadError" }}');
+          $('#threadUpdate').modal('hide');
+        }
+      });
+    });
+  });
+  // select2
+  $(document).ready(function() {
+    $('#threadUpdateTag').select2({
+      dropdownParent: $('#threadUpdate'),
+      width: '100%',
+      allowClear: true,
+      tags: true,
+      tokenSeparators: [',', ' ' ,';','>', '\n','\t',
+                        '、','　','；','＞',
+                        '，　','。','．','・','/','\\'],
+      ajax: {
+        url: (param)=>{return "{{ baseUrl }}/api/contents/tagcloud"},
+        data: function (params) {
+          var query = {
+            tagWord: params.term,
+            maxCount: 50,
+            treeId: threadUpdateTargetId,
+            useGroup: 1,
+          }
+          return query;
+        },
+        delay: 250 ,
+        dataType: 'json',
+        processResults: function (data) {
+          return {
+            results: data.map(function(group) {
+              return {
+                "text": group.text,
+                "children": group.children.map(function(tag) {
+                  return { id: tag.tag_id, text: tag.display_name };
+                })
+              };
+            }),
+            pagination: {
+              more: false
+            }
+          };
+        },
+        cache: false
+      },
+      matcher: (params, data) => {
+        // If there are no search terms, return all of the data
+        if ($.trim(params.term) === '') {
+          return data;
+        }
+        // Do not display the item if there is no 'text' property
+        if (typeof data.text === 'undefined') {
+          return null;
+        }
+        // `params.term` should be the term that is used for searching
+        // `data.text` is the text that is displayed for the data object
+        if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) {
+          var modifiedData = $.extend({}, data, true);
+          // You can modify/add properties to the object as you like
+          // modifiedData.text += ' (matched)';
+          return modifiedData;
+        }
+        // Return `null` if the term should not be displayed
+        return null;
+      },
+      createTag: function (params) {
+        var term = $.trim(params.term);
+        if (term === '') {
+          return null;
+        }
+        return {
+          id: 'new:' + term,
+          text: term,
+          newTag: true // add additional parameters
+        };
+      },
+    });
+    let threadUpdate__tagDropdownTimer = null;
+    window.addEventListener('keydown', e => {
+      if (threadUpdate__tagDropdownTimer) {
+        clearTimeout(threadUpdate__tagDropdownTimer);
+        threadUpdate__tagDropdownTimer = null;
+      }
+      if (e.target.closest('#threadUpdateViewTabTag')) {
+        // 目的地近くでのキー入力
+        if (e.isComposing || e.key === 'Process' || e.keyCode === 229) {
+          // IME入力中
+          $('#threadUpdate .select2-dropdown').hide();
+          threadUpdate__tagDropdownTimer = setTimeout(() => {
+            $('#threadUpdate .select2-dropdown').show();
+            threadUpdate__tagDropdownTimer = null;
+          }, 1500);
+        } else {
+          // IME入力中でない
+          $('#threadUpdate .select2-dropdown').show();
+        }
+      }
+    }, true);
+  });
+</script>
