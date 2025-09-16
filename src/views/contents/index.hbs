@@ -55,7 +55,12 @@
         tags.push(tagItem);
       }
       const contents = $('<div>').html(data.contents.contents);
-      const contentsSample = contents.text().substring(0, 200);
+      let readMode = '';
+      if (data.contents.emitContents) {
+        readMode = `<br><a href="{{ baseUrl }}/contents/${data.id}" class="btn btn-sm btn-outline-secondary">{{ __ "page.contents.thread.readMore" }}</a>`;
+      } 
+      //const contentsSample = contents.text().substring(0, 200);
+      //const contentsSample = data.contents.contents;
       const contentsTitle = escape_html(data.contents.contentsTitle);
       return `
           <div class="container border rounded shadow">
@@ -111,7 +116,8 @@
                 &nbsp;
               </div>
               <div class="col-10">
-                <p>${contentsSample}</p>
+                ${contents.prop('outerHTML')}
+                ${readMode}
               </div>
             </div>
             <div class="row">

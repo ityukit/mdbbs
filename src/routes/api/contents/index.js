@@ -121,6 +121,9 @@ async function get_index(node, tags, nodeWord, subTree, start, len, db) {
     if (!d.visibled) continue;
     if (d.locked) continue;
     if (!d.enabled) continue;
+    const contentesPartsAry = d.contents.split("\n");
+    const emitContents = contentesPartsAry.splice(12).length > 0;
+    const contentesParts = contentesPartsAry.join("\n");
     rdata.push({
       id: d.id,
       title: d.title,
@@ -128,7 +131,8 @@ async function get_index(node, tags, nodeWord, subTree, start, len, db) {
         id: d.cid,
         title: d.ctitle,
         contentsTitle: d.ctitle,
-        contents: (await parser.parse(d.parser, d.contents, d.cid)).main,
+        contents: (await parser.parse(d.parser, contentesParts, d.cid)).main,
+        emitContents: emitContents,
         description: d.description,
         updated_user: await usermapping(d.updated_user_id, db),
         created_user: await usermapping(d.created_user_id, db),

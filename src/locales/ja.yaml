@@ -93,6 +93,7 @@ page:
       moveCurrentError: "現在の場所です"
       moveEssDesc: "移動先の指定は必須です"
     thread:
+      readMore: "続きを読む"
       menu:
         move: "スレッドを移動"
         rename: "スレッドのタイトルを変更"
