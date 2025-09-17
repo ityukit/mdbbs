@@ -185,7 +185,7 @@
         success: function(data) {
           if (data && !data.error) {
             $('#threadUpdateTitle').val(data.title || '');
-            $('#threadUpdateTarget').text(format_string('{{ __ "page.contents.thread.modal.update.threadUpdateTargetName" }}',[ data.dirs[data.dirs.length - 1]?.name || '{{ __ "page.contents.thread.modal.update.threadUpdateTargetRoot" }}' ]));
+            $('#threadUpdateTarget').text(format_string('{{ __ "page.contents.thread.modal.update.threadUpdateTargetName" }}',[ data.dirs[data.dirs.length - 1]?.name || '{{ __ "page.contents.thread.modal.update.threadUpdateTargetNameRoot" }}' ]));
             $('#threadUpdateDescription').text(format_string('{{ __ "page.contents.thread.modal.update.threadUpdateTargetDesc" }}', [ " / " + data.dirs.map(d => d.name).join(' / ')]));
             if (data.contents) {
               $('#threadUpdateContentTitle').val(data.contents.title || '');
