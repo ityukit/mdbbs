@@ -190,7 +190,7 @@
     $('#threadCreateTag').select2({
       dropdownParent: $('#threadCreate'),
       width: '100%',
-      allowClear: true,
+      allowClear: false,
       tags: true,
       minimumInputLength: 0,
       tokenSeparators: [',',';','>', '\t',
@@ -272,6 +272,17 @@
         if (term === '') {
           return null;
         }
+        var found = false;
+        this.$element.find('option').each(function () {
+          if ($.trim($(this).val()) === $.trim(params.term)) {
+            found = true;
+            return false; // break from each loop
+          }
+        });
+        if (found) {
+          return null; // 重複する場合はタグを作成しない
+        }
+        
         return {
           id: 'new:' + term,
           text: term,
@@ -308,7 +319,6 @@
 
     // ドロップダウンが開く直前にIMEの状態をチェック
     $select2.on('select2:opening', function(event) {
-      console.log('select2:opening event triggered', isComposing);
       if (isComposing) {
         event.preventDefault(); // ドロップダウンが開くのを阻止
       }
@@ -320,6 +330,7 @@
       const $searchField = $('#threadCreate .select2-search__field');
       // IME入力中の場合はドロップダウンを閉じ、不要な検索を防ぐ
       // 以前のイベントハンドラを解除
+      //$searchField.off();
       $searchField.off('compositionstart').off('compositionend').off('keydown').off('keyup');
 
       // compositionstart イベントを監視
@@ -336,6 +347,16 @@
 
       // keydown イベントでスペースキーを制御
       $searchField.on('keydown keyup', function(event) {
+        // keydownイベントでIMEの状態をチェック
+        if (event.type === 'keydown') {
+            // IME入力中はevent.whichが229になる
+            if (event.which === 229) {
+                isComposing = true;
+            } else {
+                // IME入力中ではない場合、isComposingをfalseに戻す
+                isComposing = false;
+            }
+        }
         // IME入力中かつスペースキーが押された場合
         if (isComposing && event.which === 32) {
           // イベントの伝播と既定の動作の両方を停止
@@ -346,7 +367,6 @@
           return; 
         }
       });
-
       // inputイベントでIME入力中は検索を停止
       $searchField.on('input', function(event) {
         if (isComposing) {
