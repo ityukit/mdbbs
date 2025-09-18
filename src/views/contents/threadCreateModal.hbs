@@ -187,8 +187,10 @@
   });
   // select2
   $(document).ready(function() {
-    $('#threadCreateTag').select2({
-      dropdownParent: $('#threadCreate'),
+    const select2Tag = '#threadCreateTag';
+    const select2Container = '#threadCreate';
+    $(select2Tag).select2({
+      dropdownParent: $(select2Container),
       width: '100%',
       allowClear: false,
       tags: true,
@@ -290,32 +292,9 @@
         };
       },
     });
-    /*
-    let threadCreate__tagDropdownTimer = null;
-    window.addEventListener('keydown', e => {
-      if (threadCreate__tagDropdownTimer) {
-        clearTimeout(threadCreate__tagDropdownTimer);
-        threadCreate__tagDropdownTimer = null;
-      }
-      if (e.target.closest('#threadCreateViewTabTag')) {
-        // 目的地近くでのキー入力
-        if (e.isComposing || e.key === 'Process' || e.keyCode === 229) {
-          // IME入力中
-          $('#threadCreate .select2-dropdown').hide();
-          threadCreate__tagDropdownTimer = setTimeout(() => {
-            $('#threadCreate .select2-dropdown').show();
-            threadCreate__tagDropdownTimer = null;
-          }, 1500);
-        } else {
-          // IME入力中でない
-          $('#threadCreate .select2-dropdown').show();
-        }
-      }
-    }, true);
-    */
     // IMEの状態を管理するフラグ
     let isComposing = false;
-    const $select2 = $('#threadCreateTag');
+    const $select2 = $(select2Tag);
 
     // ドロップダウンが開く直前にIMEの状態をチェック
     $select2.on('select2:opening', function(event) {
@@ -327,7 +306,7 @@
     // Select2が開いたときに、検索フィールドのイベントを制御
     $select2.on('select2:open', function() {
       // Select2の検索入力フィールドを取得
-      const $searchField = $('#threadCreate .select2-search__field');
+      const $searchField = $(select2Container + ' .select2-search__field');
       // IME入力中の場合はドロップダウンを閉じ、不要な検索を防ぐ
       // 以前のイベントハンドラを解除
       //$searchField.off();
@@ -383,7 +362,7 @@
       isComposing = false;
       $select2.select2('close');
       // 検索ボックスの値を空にする
-      $('#threadCreate .select2-search__field').val('');
+      $(select2Container + ' .select2-search__field').val('');
       //$('#threadCreate .select2-search__field').blur();
       //// フォーカスをSelect2コンポーネントに戻す
       //setTimeout(() => {
