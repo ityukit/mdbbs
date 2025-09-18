@@ -288,6 +288,7 @@
         };
       },
     });
+    /*
     let threadUpdate__tagDropdownTimer = null;
     window.addEventListener('keydown', e => {
       if (threadUpdate__tagDropdownTimer) {
@@ -309,5 +310,32 @@
         }
       }
     }, true);
+    */
+    // IMEの状態を管理するフラグ
+    let isComposing = false;
+    const $select2 = $('#threadUpdateTag');
+    // Select2が開いたときに、検索フィールドのイベントを制御
+    $select2.on('select2:open', function() {
+      // Select2の検索入力フィールドを取得
+      const $searchField = $('.select2-search__field');
+
+      // compositionstart イベントを監視
+      $searchField.on('compositionstart', function() {
+        isComposing = true;
+      });
+
+      // compositionend イベントを監視
+      $searchField.on('compositionend', function() {
+        isComposing = false;
+      });
+
+      // keydown イベントを監視して、IME入力中はイベントを停止
+      $searchField.on('keydown', function(event) {
+        // isComposingがtrueの場合、イベントを停止
+        if (isComposing) {
+          event.stopPropagation();
+        }
+      });
+    });
   });
 </script>

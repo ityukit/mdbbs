@@ -192,11 +192,22 @@
       width: '100%',
       allowClear: true,
       tags: true,
-      tokenSeparators: [',', ' ' ,';','>', '\n','\t',
-                        '、','　','；','＞',
+      minimumInputLength: 0,
+      tokenSeparators: [',',';','>', '\t',
+                        '、','；','＞',
                         '，　','。','．','・','/','\\'],
       ajax: {
         url: (param)=>{return "{{ baseUrl }}/api/contents/tagcloud"},
+        transport: function (params, success, failure) {
+          if (isComposing) {
+            return null; // リクエストを完全に抑制
+          }
+          // 通常のリクエストを送信
+          var $request = $.ajax(params);
+          $request.then(success);
+          $request.fail(failure);
+          return $request;
+        },
         data: function (params) {
           var query = {
             tagWord: params.term,
@@ -209,6 +220,10 @@
         delay: 250 ,
         dataType: 'json',
         processResults: function (data) {
+          // 受け取ったデータが配列でない場合や空の場合は処理を中断
+          if (!Array.isArray(data) || data.length === 0 || isComposing) {
+            return { results: [] };
+          }
           return {
             results: data.map(function(group) {
               return {
@@ -226,6 +241,10 @@
         cache: false
       },
       matcher: (params, data) => {
+        // IME入力中は検索を行わない
+        if (isComposing) {
+          return null;
+        }
         // If there are no search terms, return all of the data
         if ($.trim(params.term) === '') {
           return data;
@@ -246,6 +265,9 @@
         return null;
       },
       createTag: function (params) {
+        if (isComposing) {
+          return null; // IME入力中はタグを作成しない
+        }
         var term = $.trim(params.term);
         if (term === '') {
           return null;
@@ -257,6 +279,7 @@
         };
       },
     });
+    /*
     let threadCreate__tagDropdownTimer = null;
     window.addEventListener('keydown', e => {
       if (threadCreate__tagDropdownTimer) {
@@ -278,5 +301,74 @@
         }
       }
     }, true);
+    */
+    // IMEの状態を管理するフラグ
+    let isComposing = false;
+    const $select2 = $('#threadCreateTag');
+
+    // ドロップダウンが開く直前にIMEの状態をチェック
+    $select2.on('select2:opening', function(event) {
+      console.log('select2:opening event triggered', isComposing);
+      if (isComposing) {
+        event.preventDefault(); // ドロップダウンが開くのを阻止
+      }
+    });
+
+    // Select2が開いたときに、検索フィールドのイベントを制御
+    $select2.on('select2:open', function() {
+      // Select2の検索入力フィールドを取得
+      const $searchField = $('#threadCreate .select2-search__field');
+      // IME入力中の場合はドロップダウンを閉じ、不要な検索を防ぐ
+      // 以前のイベントハンドラを解除
+      $searchField.off('compositionstart').off('compositionend').off('keydown').off('keyup');
+
+      // compositionstart イベントを監視
+      $searchField.on('compositionstart', function() {
+        isComposing = true;
+      });
+
+      // compositionend イベントを監視
+      $searchField.on('compositionend', function() {
+        isComposing = false;
+        // 確定後に検索を再開
+        $searchField.trigger('input');
+      });
+
+      // keydown イベントでスペースキーを制御
+      $searchField.on('keydown keyup', function(event) {
+        // IME入力中かつスペースキーが押された場合
+        if (isComposing && event.which === 32) {
+          // イベントの伝播と既定の動作の両方を停止
+          event.stopPropagation();
+          event.preventDefault();
+          
+          // ATOKの変換候補表示を促すために、ここでは何もしない
+          return; 
+        }
+      });
+
+      // inputイベントでIME入力中は検索を停止
+      $searchField.on('input', function(event) {
+        if (isComposing) {
+          return;
+        }
+        // ここに検索ロジックが実行される
+      });
+      if (isComposing) {
+        $select2.select2('close');
+      }
+    });
+    // タグが選択されたときに、isComposingフラグを確実にリセット
+    $select2.on('select2:select', function (e) {
+      isComposing = false;
+      $select2.select2('close');
+      // 検索ボックスの値を空にする
+      $('#threadCreate .select2-search__field').val('');
+      //$('#threadCreate .select2-search__field').blur();
+      //// フォーカスをSelect2コンポーネントに戻す
+      //setTimeout(() => {
+      //  $('#threadCreate .select2-search__field').focus();
+      //}, 100);
+    });
   });
 </script>
