@@ -508,39 +508,39 @@
                 &nbsp;
               </div>
               <div class="col-8">
-                <form class="row g-3" id="contentsCreateForm" onsubmit="return contentsCreate_createContents()">
-                  <h3 id="contentsCreateTitle"></h3>
-                  <p id="contentsCreateDescription"></p>
+                <form class="row g-3" id="contentsDirectCreateForm" onsubmit="return contentsDirectCreate_createContents()">
+                  <h3 id="contentsDirectCreateTitle"></h3>
+                  <p id="contentsDirectCreateDescription"></p>
                   <hr>
                   <div class="row">
                     <div class="col-12 mb-3">
-                      <label for="contentsCreateContentTitle" class="form-label">{{ __ 'page.contents.thread.contents.create.contentTitle' }}*</label>
-                      <input type="text" class="form-control" id="contentsCreateContentTitle" required>
+                      <label for="contentsDirectCreateContentTitle" class="form-label">{{ __ 'page.contents.thread.contents.create.contentTitle' }}*</label>
+                      <input type="text" class="form-control" id="contentsDirectCreateContentTitle" required>
                     </div>
-                    <ul class="nav nav-tabs" id="contentsCreateViewTab" role="tablist">
+                    <ul class="nav nav-tabs" id="contentsDirectCreateViewTab" role="tablist">
                       <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="contentsCreateViewTab-source" data-bs-toggle="tab" data-bs-target="#contentsCreateViewTab-source-pane" type="button" role="tab" aria-controls="contentsCreateViewTab-source-pane" aria-selected="true">{{ __ 'page.contents.thread.contents.create.source' }}</button>
+                        <button class="nav-link active" id="contentsDirectCreateViewTab-source" data-bs-toggle="tab" data-bs-target="#contentsDirectCreateViewTab-source-pane" type="button" role="tab" aria-controls="contentsDirectCreateViewTab-source-pane" aria-selected="true">{{ __ 'page.contents.thread.contents.create.source' }}</button>
                       </li>
                       <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="contentsCreateViewTab-preview" data-bs-toggle="tab" data-bs-target="#contentsCreateViewTab-preview-pane" type="button" role="tab" aria-controls="contentsCreateViewTab-preview-pane" aria-selected="false" onclick="contentsCreateModal_previewContent()">{{ __ 'page.contents.thread.contents.create.preview' }}</button>
+                        <button class="nav-link" id="contentsDirectCreateViewTab-preview" data-bs-toggle="tab" data-bs-target="#contentsDirectCreateViewTab-preview-pane" type="button" role="tab" aria-controls="contentsDirectCreateViewTab-preview-pane" aria-selected="false" onclick="contentsDirectCreateModal_previewContent()">{{ __ 'page.contents.thread.contents.create.preview' }}</button>
                       </li>
                     </ul>
-                    <div class="tab-content" id="contentsCreateViewTabContent">
-                      <div class="tab-pane fade show active" id="contentsCreateViewTab-source-pane" role="tabpanel" aria-labelledby="contentsCreateViewTab-source" tabindex="0">
-                        <label for="contentsCreateContent" class="form-label">{{ __ 'page.contents.thread.contents.create.content' }}*</label>
-                        <textarea class="form-control" id="contentsCreateContent" rows="6" required></textarea>
+                    <div class="tab-content" id="contentsDirectCreateViewTabContent">
+                      <div class="tab-pane fade show active" id="contentsDirectCreateViewTab-source-pane" role="tabpanel" aria-labelledby="contentsDirectCreateViewTab-source" tabindex="0">
+                        <label for="contentsDirectCreateContent" class="form-label">{{ __ 'page.contents.thread.contents.create.content' }}*</label>
+                        <textarea class="form-control" id="contentsDirectCreateContent" rows="6" required></textarea>
                       </div>
-                      <div class="tab-pane fade" id="contentsCreateViewTab-preview-pane" role="tabpanel" aria-labelledby="contentsCreateViewTab-preview" tabindex="0">
-                        <label for="contentsCreateContentPreview" class="form-label">{{ __ 'page.contents.thread.contents.create.contentPreview' }}</label>
-                        <div id="contentsCreateContentPreview" class="border p-2 contents-preview"></div>
+                      <div class="tab-pane fade" id="contentsDirectCreateViewTab-preview-pane" role="tabpanel" aria-labelledby="contentsDirectCreateViewTab-preview" tabindex="0">
+                        <label for="contentsDirectCreateContentPreview" class="form-label">{{ __ 'page.contents.thread.contents.create.contentPreview' }}</label>
+                        <div id="contentsDirectCreateContentPreview" class="border p-2 contents-preview"></div>
                       </div>
                     </div>
                   </div>
                   <div class="text-end">{{ __ 'page.contents.thread.contents.create.EssDesc' }}</div>
                   <div>
-                    <button type="submit" class="btn btn-primary" id="contentsCreateSubmit">
-                      <span id="contentsDoCreateText">{{ __ 'page.contents.thread.contents.create.doCreate' }}</span>
-                      <span id="contentsDoCreateSpinner" class="d-none">
+                    <button type="submit" class="btn btn-primary" id="contentsDirectCreateSubmit">
+                      <span id="contentsDirectDoCreateText">{{ __ 'page.contents.thread.contents.create.doCreate' }}</span>
+                      <span id="contentsDirectDoCreateSpinner" class="d-none">
                         <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
                         {{ __ 'page.contents.thread.contents.create.creating' }}
                       </span>
@@ -553,36 +553,36 @@
               </div>
             </div>
 <script>
-  function contentsCreate_setTarget(contentsId, title) {
-    contentsCreateTargetContentsId = contentsId;
+  function contentsDirectCreate_setTarget(contentsId, title) {
+    contentsDirectCreateTargetContentsId = contentsId;
     document.getElementById('postArea').classList.remove('d-none');
 
-    document.getElementById('contentsCreateTitle').innerText = format_string('{{ __ "page.contents.thread.contents.create.title" }}', escape_html(title));
-    document.getElementById('contentsCreateDescription').innerText = format_string('{{ __ "page.contents.thread.contents.create.description" }}', escape_html(title));
-    document.getElementById('contentsCreateContentTitle').value = '';
-    document.getElementById('contentsCreateContent').value = '';
-    document.getElementById('contentsCreateContentPreview').innerText = '{{ __ "page.contents.thread.contents.create.previewEmpty" }}';
+    document.getElementById('contentsDirectCreateTitle').innerText = format_string('{{ __ "page.contents.thread.contents.create.title" }}', escape_html(title));
+    document.getElementById('contentsDirectCreateDescription').innerText = format_string('{{ __ "page.contents.thread.contents.create.description" }}', escape_html(title));
+    document.getElementById('contentsDirectCreateContentTitle').value = '';
+    document.getElementById('contentsDirectCreateContent').value = '';
+    document.getElementById('contentsDirectCreateContentPreview').innerText = '{{ __ "page.contents.thread.contents.create.previewEmpty" }}';
     // タブをソースに
-    const tabTrigger = new bootstrap.Tab(document.querySelector('#contentsCreateViewTab button[id="contentsCreateViewTab-source"]'));
+    const tabTrigger = new bootstrap.Tab(document.querySelector('#contentsDirectCreateViewTab button[id="contentsDirectCreateViewTab-source"]'));
     tabTrigger.show();
   }
-  let contentsCreateTargetContentsId = null;
-  function contentsCreate_createContents() {
-    if (!contentsCreateTargetContentsId){
+  let contentsDirectCreateTargetContentsId = null;
+  function contentsDirectCreate_createContents() {
+    if (!contentsDirectCreateTargetContentsId){
       alert('{{ __ "page.contents.thread.contents.create.noTargetError" }}');
       return false;
     }
     // 入力チェック
-    const contentTitle = document.getElementById('contentsCreateContentTitle').value;
-    const content = document.getElementById('contentsCreateContent').value;
-    $("#contentsCreateSubmit").prop("disabled", true);
-    $("#contentsDoCreateText").addClass("d-none");
-    $("#contentsDoCreateSpinner").removeClass("d-none");
+    const contentTitle = document.getElementById('contentsDirectCreateContentTitle').value;
+    const content = document.getElementById('contentsDirectCreateContent').value;
+    $("#contentsDirectCreateSubmit").prop("disabled", true);
+    $("#contentsDirectDoCreateText").addClass("d-none");
+    $("#contentsDirectDoCreateSpinner").removeClass("d-none");
     $.ajax({
       type: 'POST',
       url: '{{ baseUrl }}/api/contents/contentsCreate',
       data: {
-        targetContentsId: contentsCreateTargetContentsId,
+        targetContentsId: contentsDirectCreateTargetContentsId,
         contentTitle: contentTitle,
         content: content,
         parser: 'default',
@@ -605,20 +605,20 @@
         alert('{{ __ "page.contents.thread.modal.create.createError" }}');
       },
       complete: function() {
-        $("#contentsCreateSubmit").prop("disabled", false);
-        $("#contentsDoCreateText").removeClass("d-none");
-        $("#contentsDoCreateSpinner").addClass("d-none");
+        $("#contentsDirectCreateSubmit").prop("disabled", false);
+        $("#contentsDirectDoCreateText").removeClass("d-none");
+        $("#contentsDirectDoCreateSpinner").addClass("d-none");
       }
     });
     return false; // フォーム送信をキャンセル
   }
-  function contentsCreate_previewContent() {
-    const content = document.getElementById('contentsCreateContent').value;
+  function contentsDirectCreate_previewContent() {
+    const content = document.getElementById('contentsDirectCreateContent').value;
     if (content.trim().length === 0) {
-      $('#contentsCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewEmpty" }}');
+      $('#contentsDirectCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewEmpty" }}');
       return;
     }
-    $('#contentsCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewLoading" }}');
+    $('#contentsDirectCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewLoading" }}');
     $.ajax({
       type: 'POST',
       url: '{{ baseUrl }}/api/contents/parse',
@@ -630,17 +630,17 @@
       dataType: 'json',
       success: function(data) {
         if (data && data.contentsparsed) {
-          $('#contentsCreateContentPreview').html(data.contentsparsed);
+          $('#contentsDirectCreateContentPreview').html(data.contentsparsed);
           // highlight.js
-          document.querySelectorAll('#contentsCreateContentPreview pre code').forEach((block) => {
+          document.querySelectorAll('#contentsDirectCreateContentPreview pre code').forEach((block) => {
             hljs.highlightElement(block);
           });
         } else {
-          $('#contentsCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewError" }}');
+          $('#contentsDirectCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewError" }}');
         }
       },
       error: function() {
-        $('#contentsCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewError" }}');
+        $('#contentsDirectCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewError" }}');
       }
     });
   }
