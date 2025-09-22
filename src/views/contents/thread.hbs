@@ -277,7 +277,7 @@
     const area = $("<div>").addClass("vtree-area");
     generateContentSub(area, data.contents, {{thread.root_contents_id}});
     $('#contentArea').append(area);
-    contentDirectCreate_setTarget(data.contents[data.contents.length -1].id, data.contents[data.contents.length -1].title);
+    contentsDirectCreate_setTarget(data.contents[data.contents.length -1].id, data.contents[data.contents.length -1].title);
   }
 
   addEventListener("load", async (event) => {
