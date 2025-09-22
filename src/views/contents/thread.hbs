@@ -522,7 +522,7 @@
                         <button class="nav-link active" id="contentsDirectCreateViewTab-source" data-bs-toggle="tab" data-bs-target="#contentsDirectCreateViewTab-source-pane" type="button" role="tab" aria-controls="contentsDirectCreateViewTab-source-pane" aria-selected="true">{{ __ 'page.contents.thread.contents.create.source' }}</button>
                       </li>
                       <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="contentsDirectCreateViewTab-preview" data-bs-toggle="tab" data-bs-target="#contentsDirectCreateViewTab-preview-pane" type="button" role="tab" aria-controls="contentsDirectCreateViewTab-preview-pane" aria-selected="false" onclick="contentsDirectCreateModal_previewContent()">{{ __ 'page.contents.thread.contents.create.preview' }}</button>
+                        <button class="nav-link" id="contentsDirectCreateViewTab-preview" data-bs-toggle="tab" data-bs-target="#contentsDirectCreateViewTab-preview-pane" type="button" role="tab" aria-controls="contentsDirectCreateViewTab-preview-pane" aria-selected="false" onclick="contentsDirectCreate_previewContent()">{{ __ 'page.contents.thread.contents.create.preview' }}</button>
                       </li>
                     </ul>
                     <div class="tab-content" id="contentsDirectCreateViewTabContent">
@@ -602,7 +602,7 @@
       },
       error: function() {
         // TODO: エラーハンドリング
-        alert('{{ __ "page.contents.thread.modal.create.createError" }}');
+        alert('{{ __ "page.contents.thread.contents.create.createError" }}');
       },
       complete: function() {
         $("#contentsDirectCreateSubmit").prop("disabled", false);
