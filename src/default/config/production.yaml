@@ -69,6 +69,15 @@ global:
         maxSize: '10m'
         maxFiles: 5
 
+  pageConfig:
+    thread:
+      view:
+        listmax: 20
+        lastmax: 5
+        perpage: 10
+        pageindex: 5
+        treemax: 2
+
 Modules:
   UserManager:
     HASHING_SUGAR_KEY: ikuhytg678u9iki6tgss

@@ -20,7 +20,7 @@ async function usermapping(uid,db){
   }
 }
 
-async function get_coutents_count(cid,db){
+async function get_contents_count(cid,db){
   return (await db.queryBuilder().withRecursive('t_contents_list', (qb) => {
     qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
       .from('contents_list')
@@ -87,6 +87,7 @@ async function get_contents(cid,listmax,db) {
   if (false && currentList.length < listmax) {
     // DO NOTHING
   }else{
+    const maxlist = settings.config.pageConfig?.thread?.view?.lastmax || 1;
     const currentRList = await db.queryBuilder().withRecursive('t_contents_list', (qb) => {
       qb.select('contents_list.id', 'contents_list.parent_id', 'contents_list.child_id')
         .from('contents_list')
@@ -116,26 +117,35 @@ async function get_contents(cid,listmax,db) {
         .join('contents','t_contents_list.child_id','=','contents.id')
         .orderBy('contents.created_at','desc')
         .orderBy('contents.id','desc')
-        .limit(2);
+        .limit(maxlist+1);
     if (currentRList && currentRList.length > 0){
-      if (currentRList[0].id !== currentList[currentList.length-1].id){
-        if (currentRList.length > 1 && currentRList[1].id !== currentList[currentList.length-1].id){
-          ret.push(null);
+      let chkdup = currentRList.length+1;
+      for (let i=0;i<currentRList.length;i++){
+        const cr = currentRList[i];
+        if (cr.id === currentList[currentList.length-1].id) {
+          chkdup = i;
+          break;
         }
-        const contentParsed = await parser.parse(currentRList[0].parser, currentRList[0].contents, currentRList[0].id);
+      }
+      if (chkdup >= maxlist){
+        ret.push(null);
+      }
+      // add last
+      for(let i=Math.min(currentRList.length,maxlist,chkdup)-1;i >=0;i--){
+        const contentParsed = await parser.parse(currentRList[i].parser, currentRList[i].contents, currentRList[i].id);
         ret.push({
-          id: currentRList[0].id,
-          title: currentRList[0].title,
+          id: currentRList[i].id,
+          title: currentRList[i].title,
           contents: contentParsed.main,
           toc: contentParsed.toc,
-          description: currentRList[0].description,
-          locked: currentRList[0].locked,
-          updated_user: await usermapping(currentRList[0].updated_user_id, db),
-          created_user: await usermapping(currentRList[0].created_user_id, db),
-          updated_at: currentRList[0].updated_at.toISOString(),
-          updated_at_str: settings.datetool.format(currentRList[0].updated_at),
-          created_at: currentRList[0].created_at.toISOString(),
-          created_at_str: settings.datetool.format(currentRList[0].created_at),
+          description: currentRList[i].description,
+          locked: currentRList[i].locked,
+          updated_user: await usermapping(currentRList[i].updated_user_id, db),
+          created_user: await usermapping(currentRList[i].created_user_id, db),
+          updated_at: currentRList[i].updated_at.toISOString(),
+          updated_at_str: settings.datetool.format(currentRList[i].updated_at),
+          created_at: currentRList[i].created_at.toISOString(),
+          created_at_str: settings.datetool.format(currentRList[i].created_at),
           children: null,
         });
       }
@@ -150,7 +160,7 @@ async function get_child_contents(cid, subtree,listOnly, db) {
   const childs = await db.select('contents_tree.child_id').from('contents_tree').where({ parent_id: cid });
   if (childs.length < 1) return [[],0];
   for(const c of childs) {
-    const childContents = await get_contents(c.child_id, 3, db);
+    const childContents = await get_contents(c.child_id, settings.config.pageConfig?.thread?.view?.treemax || 2, db);
     if (childContents.length > 0) {
       ret.push(...childContents);
     }
@@ -180,7 +190,7 @@ async function get_thread_by_id(cid, subtree,listOnly, treeOnly,listMax, db) {
   if (treeOnly) loadListCount = 1;
   let ret = {
     contents: await get_contents(cid, loadListCount, db),
-    count: (await get_coutents_count(cid, db))
+    count: (await get_contents_count(cid, db))
   };
   if (listOnly){
     subtree = 0;
@@ -204,6 +214,66 @@ async function get_thread_by_id(cid, subtree,listOnly, treeOnly,listMax, db) {
   return ret;
 }
 
+function findContentIdByContent(contents, id) {
+  if (!contents || contents.length < 1) return null;
+  for(let i=0;i<contents.length;i++) {
+    const c = contents[i];
+    if (!c) continue;
+    if (c.id === id) return {pos:i,child:-1, content:contents};
+    for(let j=0;j<(c.children?.length||0);j++) {
+      const cc = c.children[j];
+      if (cc.id === id) return {pos:i, child:j, content: c.children};
+    }
+  }
+  return null;
+}
+
+async function get_thread_by_required_id(tid, cid, db) {
+  if (tid < 1) return null;
+  if (cid < 1) return null;
+  // check tid and cid
+  const chk = await db.select('contents.id').from('contents').where({ id: tid }).first();
+  if (!chk) return null;
+  const chk2 = await db.select('contents.id').from('contents').where({ id: cid }).first();
+  if (!chk2) return null;
+  // read current list
+  const path = await db.select(db.raw(`u_contents_list_tree_ids(?) as path`, [cid])).first();
+  if (!path || !path.path) return null;
+  const ids = path.path.split(' > ').map(v=>parseInt(v)).filter(v=>!isNaN(v) && v>0);
+  if (ids.indexOf(tid) < 0) return null;
+  const dids = ids.slice(ids.indexOf(tid));
+  if (dids.length < 1) return null;
+  // read contents
+  let contents = null;
+  let current = null;
+  for(const id of dids) {
+    if (id < 1) return null;
+    const content = await get_contents(id, 1, db);
+    if (!content) return null;
+    if (!contents) {
+      contents = content;
+      current = contents;
+    }
+    const c = findContentIdByContent(current, id);
+    console.log("findContentIdByContent:", content, contents,id, c);
+    if (!c) {
+      return null;
+    }
+    if (c.child >= 0){
+      if (!current[c.pos].children) current[c.pos].children = [];
+      current = current[c.pos].children = content;
+    }else{
+      current.splice(c.pos,Infinity, ...content) ;
+    }
+    current = c.content;
+  }
+  let ret = {
+    contents: contents,
+    count: (await get_contents_count(tid, db))
+  };
+  return ret;
+}
+
 export default async function thread(app, main, api, subdir, moduleName, settings) {
   // ツリー構造取得処理
   api.get('/contents/thread/:id', async (req, res) => {
@@ -211,13 +281,14 @@ export default async function thread(app, main, api, subdir, moduleName, setting
     let subtree = utils.parseSafeInt(req.query?.subtree) || 0;
     const listOnly = req.query?.listOnly === '1';
     const treeOnly = req.query?.treeOnly === '1';
+    const require_content_id = utils.parseSafeInt(req.query?.require_content_id) || null;
 
     if (contentId < 1) {
       return res.status(400).json({ error: 'Invalid content ID' });
     }
     // safety
-    if (subtree < 0) {
-      subtree = 0;
+    if (subtree < settings.config.pageConfig?.thread?.view?.treemax || 1) {
+      subtree = settings.config.pageConfig?.thread?.view?.treemax || 1;
     }
     if (subtree > 10) {
       subtree = 10;
@@ -225,7 +296,11 @@ export default async function thread(app, main, api, subdir, moduleName, setting
 
     // データベースからスレッドの内容を取得
     const threadData = await database.transaction(async (tx) => {
-      return await get_thread_by_id(contentId,subtree,listOnly,treeOnly,10, tx);
+      if (require_content_id && require_content_id != contentId){
+        return await get_thread_by_required_id(contentId,require_content_id, tx);
+      }else{
+        return await get_thread_by_id(contentId,subtree,listOnly,treeOnly,settings.config.pageConfig?.thread?.view?.listmax || 10, tx);
+      }
     });
 
     if (!threadData){

@@ -298,7 +298,7 @@ for(let i=0;i<30;i++){
 }
 
 // test markdown
-{
+if (false){
   let d = await database('contents').insert({
     title: 'テストデータ 1-markdown',
     revision: 1,

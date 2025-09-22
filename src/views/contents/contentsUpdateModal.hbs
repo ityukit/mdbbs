@@ -1,0 +1,180 @@
+<!-- contents update -->
+<div class="modal fade modal-xl" id="contentsUpdate" data-bs-keyboard="false" tabindex="-1" aria-labelledby="contentsUpdateLabel" data-bs-backdrop="static">
+  <div class="modal-dialog modal-fullscreen2">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="contentsUpdateLabel">{{ __ 'page.contents.contents.modal.update.title' }}</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="contentsUpdateLoading" class="d-flex align-items-center">
+          <div class="spinner-border" role="status"></div>
+          &nbsp; &nbsp;
+          {{ __ 'page.contents.contents.modal.update.dataLoading' }}
+        </div>
+        <form class="row g-3 d-none" id="contentsUpdateForm" onsubmit="return contentsUpdateModal_updateContents()">
+          <h3 id="contentsUpdateTarget"></h3>
+          <p id="contentsUpdateDescription"></p>
+          <hr>
+          <div class="row">
+            <div class="col-12 mb-3">
+              <label for="contentsUpdateContentTitle" class="form-label">{{ __ 'page.contents.contents.modal.update.contentTitle' }}*</label>
+              <input type="text" class="form-control" id="contentsUpdateContentTitle" required>
+            </div>
+            <ul class="nav nav-tabs" id="contentsUpdateViewTab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="contentsUpdateViewTab-source" data-bs-toggle="tab" data-bs-target="#contentsUpdateViewTab-source-pane" type="button" role="tab" aria-controls="contentsUpdateViewTab-source-pane" aria-selected="true">{{ __ 'page.contents.contents.modal.update.source' }}</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="contentsUpdateViewTab-preview" data-bs-toggle="tab" data-bs-target="#contentsUpdateViewTab-preview-pane" type="button" role="tab" aria-controls="contentsUpdateViewTab-preview-pane" aria-selected="false" onclick="contentsUpdateModal_previewContent()">{{ __ 'page.contents.contents.modal.update.preview' }}</button>
+              </li>
+            </ul>
+            <div class="tab-content" id="contentsUpdateViewTabContent">
+              <div class="tab-pane fade show active" id="contentsUpdateViewTab-source-pane" role="tabpanel" aria-labelledby="contentsUpdateViewTab-source" tabindex="0">
+                <label for="contentsUpdateContent" class="form-label">{{ __ 'page.contents.contents.modal.update.contentContent' }}*</label>
+                <textarea class="form-control" id="contentsUpdateContent" rows="6" required></textarea>
+              </div>
+              <div class="tab-pane fade" id="contentsUpdateViewTab-preview-pane" role="tabpanel" aria-labelledby="contentsUpdateViewTab-preview" tabindex="0">
+                <label for="contentsUpdateContentPreview" class="form-label">{{ __ 'page.contents.contents.modal.update.contentPreview' }}</label>
+                <div id="contentsUpdateContentPreview" class="border p-2 contents-preview"></div>
+              </div>
+            </div>
+          </div>
+          <div class="text-end">{{ __ 'page.contents.contents.modal.update.contentEssDesc' }}</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __ 'page.contents.contents.modal.update.modalClose' }}</button>
+            <button type="submit" class="btn btn-primary" id="contentsUpdateSubmit">
+              <span id="contentsDoUpdateText">{{ __ 'page.contents.contents.modal.update.doUpdate' }}</span>
+              <span id="contentsDoUpdateSpinner" class="d-none">
+                <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                {{ __ 'page.contents.contents.modal.update.updating' }}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  function contentsUpdateModal_updateContents() {
+    if (contentsUpdateTargetId === '') {
+      alert('{{ __ "page.contents.contents.modal.update.noNodeError" }}');
+      return false; // フォーム送信をキャンセル
+    }
+    const contentTitle = document.getElementById('contentsUpdateContentTitle').value;
+    const content = document.getElementById('contentsUpdateContent').value;
+    $("#contentsUpdateSubmit").prop("disabled", true);
+    $("#contentsDoUpdateText").addClass("d-none");
+    $("#contentsDoUpdateSpinner").removeClass("d-none");
+    $.ajax({
+      type: 'POST',
+      url: '{{ baseUrl }}/api/contents/contentsUpdate',
+      data: {
+        targetId: contentsUpdateTargetId,
+        contentTitle: contentTitle,
+        content: content,
+        parser: 'default',
+        _csrf: '{{_csrf}}'
+      },
+      dataType: 'json',
+      success: function(data) {
+        if (data && !data.error) {
+          // 更新成功
+          // TODO: コンテンツ更新成功時の処理
+          // modalを閉じる
+          $('#contentsUpdate').modal('hide');
+          // reload
+          location.reload();          
+        }else{
+          // TODO: コンテンツ更新失敗時の処理
+          alert('{{ __ "page.contents.contents.modal.update.updateError" }}');
+        }
+      },
+      error: function() {
+        // TODO: エラーハンドリング
+        alert('{{ __ "page.contents.contents.modal.update.updateError" }}');
+      },
+      complete: function() {
+        $("#contentsUpdateSubmit").prop("disabled", false);
+        $("#contentsDoUpdateText").removeClass("d-none");
+        $("#contentsDoUpdateSpinner").addClass("d-none");
+      }
+    });
+    return false; // フォーム送信をキャンセル
+  }
+  function contentsUpdateModal_previewContent() {
+    const content = document.getElementById('contentsUpdateContent').value;
+    if (content.trim().length === 0) {
+      $('#contentsUpdateContentPreview').text('{{ __ "page.contents.contents.modal.update.previewEmpty" }}');
+      return;
+    }
+    $('#contentsUpdateContentPreview').text('{{ __ "page.contents.contents.modal.update.previewLoading" }}');
+    $.ajax({
+      type: 'POST',
+      url: '{{ baseUrl }}/api/contents/parse',
+      data: {
+        content: content,
+        parser: 'default',
+        _csrf: '{{_csrf}}'
+      },
+      dataType: 'json',
+      success: function(data) {
+        if (data && data.contentsparsed) {
+          $('#contentsUpdateContentPreview').html(data.contentsparsed);
+          // highlight.js
+          document.querySelectorAll('#contentsUpdateContentPreview pre code').forEach((block) => {
+            hljs.highlightElement(block);
+          });
+        } else {
+          $('#contentsUpdateContentPreview').text('{{ __ "page.contents.contents.modal.update.previewError" }}');
+        }
+      },
+      error: function() {
+        $('#contentsUpdateContentPreview').text('{{ __ "page.contents.contents.modal.update.previewError" }}');
+      }
+    });
+  }
+  let contentsUpdateTargetId = '';
+  addEventListener("load", (event) => {
+    $('#contentsUpdate').on('shown.bs.modal', function (event) {
+      $('#contentsUpdateContentTitle').val('');
+      $('#contentsUpdateContent').val('');
+      $('#contentsUpdateContentPreview').text('{{ __ "page.contents.contents.modal.update.previewEmpty" }}');
+      $("#contentsUpdateSubmit").prop("disabled", false);
+      $("#contentsDoUpdateText").removeClass("d-none");
+      $("#contentsDoUpdateSpinner").addClass("d-none");
+      $('#contentsUpdateLoading').removeClass('d-none');
+      $('#contentsUpdateForm').addClass('d-none');
+      $.ajax({
+        type: 'GET',
+        url: '{{ baseUrl }}/api/contents/info',
+        data: {
+          contentsId: contentsUpdateTargetId,
+        },
+        dataType: 'json',
+        success: function(data) {
+          if (data && !data.error) {
+            $('#contentsUpdateLoading').addClass('d-none');
+            $('#contentsUpdateForm').removeClass('d-none');
+            $('#contentsUpdateTarget').text(format_string('{{ __ "page.contents.contents.modal.update.contentsUpdateTarget" }}', data.title));
+            $('#contentsUpdateDescription').text(format_string('{{ __ "page.contents.contents.modal.update.contentsUpdateDescription" }}', data.title));
+            $('#contentsUpdateContentTitle').val(data.title || '');
+            $('#contentsUpdateContent').val(data.contents || '');
+          } else {
+            alert('{{ __ "page.contents.contents.modal.update.loadError" }}');
+            $('#contentsUpdate').modal('hide');
+          }
+        },
+        error: function() {
+          alert('{{ __ "page.contents.contents.modal.update.loadError" }}');
+          $('#contentsUpdate').modal('hide');
+        }
+      });
+    });
+  });
+  function contentsUpdateModal_setTarget(id) {
+    contentsUpdateTargetId = id;
+    $('#contentsUpdate').modal('show');
+  }
+</script>

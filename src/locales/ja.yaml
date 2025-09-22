@@ -38,6 +38,31 @@ page:
       noContents: "コンテンツが見つかりませんでした"
 
       newThread: "新しいスレッド"
+    contents:
+      modal:
+        update:
+          title: "コンテンツを更新"
+          contentTitle: "コンテンツタイトル"
+          content: "内容"
+          source: "ソース"
+          preview: "プレビュー"
+          contentContent: "内容"
+          contentPreview: "内容プレビュー"
+          contentEssDesc: "* マークの内容は必須です"
+          doUpdate: "更新"
+          updating: "更新中..."
+          modalClose: "閉じる"
+          dataLoading: "読み込み中..."
+
+          previewEmpty: "内容が空です"
+          previewLoading: "プレビューを読み込み中..."
+          previewError: "プレビューの読み込みに失敗しました"
+          updateError: "コンテンツの更新に失敗しました"
+          noNodeError: "ノードが指定されていません"
+          loadError: "コンテンツ情報の読み込みに失敗しました"
+
+          contentsUpdateTarget: "更新先コンテンツ: {0}"
+          contentsUpdateDescription: "コンテンツ [ {0} ] を更新します"
     tree:
       search: Tree検索
       searchButton: 実行
@@ -94,10 +119,71 @@ page:
       moveEssDesc: "移動先の指定は必須です"
     thread:
       readMore: "続きを読む"
+      contents:
+        menu:
+          update: "内容を更新"
+          reply: "この内容に直接返信(コンテンツが分岐します)"
+          create: "この内容に返信(コンテンツがつながります)"
+        create:
+          title: "返信"
+          description: "{0} に新しく返信します"
+          source: "ソース"
+          preview: "プレビュー"
+          contentPreview: "プレビュー"
+          previewEmpty: "内容が空です"
+          previewLoading: "プレビューを読み込み中..."
+          previewError: "プレビューの読み込みに失敗しました"
+          contentTitle: "コンテンツタイトル"
+          content: "内容"
+          EssDesc: "* マークの内容は必須です"
+          doCreate: "作成"
+          creating: "作成中..."
+          createError: "コンテンツの作成に失敗しました"
+          noTargetError: "ターゲットコンテンツが指定されていません"
       menu:
         move: "スレッドを移動"
         update: "スレッドを更新"
       modal:
+        subcreate:
+          title: "返信(分岐して作成)"
+          description: "{0} に新しく返信します(いままでのコンテンツの流れと分岐します)"
+          source: "ソース"
+          preview: "プレビュー"
+          contentPreview: "プレビュー"
+          previewEmpty: "内容が空です"
+          previewLoading: "プレビューを読み込み中..."
+          previewError: "プレビューの読み込みに失敗しました"
+          contentTitle: "コンテンツタイトル"
+          content: "内容"
+          contentContent: "内容"
+          contentEssDesc: "* マークの内容は必須です"
+          doSubCreate: "作成"
+          creating: "作成中..."
+          createError: "コンテンツの作成に失敗しました"
+          noTargetError: "ターゲットコンテンツが指定されていません"
+          dataLoading: "読み込み中..."
+          modalClose: "閉じる"
+          loadError: "コンテンツ情報の読み込みに失敗しました"
+        nextCreate:
+          title: "返信"
+          description: "{0} に新しく返信します(いままでのコンテンツの流れにつながります)"
+          source: "ソース"
+          preview: "プレビュー"
+          contentPreview: "プレビュー"
+          previewEmpty: "内容が空です"
+          previewLoading: "プレビューを読み込み中..."
+          previewError: "プレビューの読み込みに失敗しました"
+          contentTitle: "コンテンツタイトル"
+          content: "内容"
+          contentContent: "内容"
+          contentEssDesc: "* マークの内容は必須です"
+          doCreate: "作成"
+          creating: "作成中..."
+          createError: "コンテンツの作成に失敗しました"
+          noTargetError: "ターゲットコンテンツが指定されていません"
+          dataLoading: "読み込み中..."
+          modalClose: "閉じる"
+          loadError: "コンテンツ情報の読み込みに失敗しました"
         move:
           title: "スレッドを移動"
           loading: "読み込み中..."

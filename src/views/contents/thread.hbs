@@ -1,13 +1,38 @@
 {{> header }}
 {{> topNavigator }}
 
+{{> contents/contentsCreateModal }}
+{{> contents/contentsUpdateModal }}
+{{> contents/contentsSubCreateModal }}
+
 <script>
-  function generateContentOnce(data) {
-    return `
+  function generateContentOnce(data,isLast) {
+    let d = `
         <div class="container-fluid border rounded shadow">
           <div class="row">
             <div class="col-10">
-              <h5>${escape_html(data.title)}</h5>
+              <div class="contents-title-area">
+                <div class="dropdown contents-index-contents-navbar-nav">
+                  <button class="btn dropdown-toggle contents-index-contents-navbar-button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="material-icons">menu</span>
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" onclick="contentsUpdateModal_setTarget('${data.id}')">{{ __ "page.contents.thread.contents.menu.update" }}</a></li>`
+    if (!isLast){
+      d += `
+                    <li><a class="dropdown-item" onclick="contentSubCreateModal_setTarget('${data.id}')">{{ __ "page.contents.thread.contents.menu.reply" }}</a></li>`
+    }else{
+      d += `
+                    <li><a class="dropdown-item" onclick="contentCreateModal_setTarget('${data.id}')">{{ __ "page.contents.thread.contents.menu.create" }}</a></li>`
+    }
+    d += `
+                  </ul>
+                </div>
+                &nbsp;
+                <div class="contents-title">
+                  ${escape_html(data.title)}
+                </div>
+              </div>
               <!-- contents_id:${data.id} -->
             </div>
             <div class="col-2 text-end">
@@ -30,6 +55,7 @@
           </div>
         </div>
     `;
+    return d;
   }
 
   let threadAllData = {
@@ -215,7 +241,7 @@
           continue;
         }
         lastLoadedId = contentsList[i].id;
-        area.append(generateContentOnce(contentsList[i]));
+        area.append(generateContentOnce(contentsList[i], i === contentsList.length - 1));
         let areaChild = null;
         let hasChild = false;
         if (contentsList[i].children) {
@@ -251,6 +277,7 @@
     const area = $("<div>").addClass("vtree-area");
     generateContentSub(area, data.contents, {{thread.root_contents_id}});
     $('#contentArea').append(area);
+    contentsCreate_setTarget(data.contents[data.contents.length -1].id, data.contents[data.contents.length -1].title);
   }
 
   addEventListener("load", async (event) => {
@@ -474,6 +501,150 @@
         <div class="col-md-9" id="main">
           <div id="contentArea">
 
+          </div>
+          <div id="postArea" class="d-none">
+            <div class="row">
+              <div class="col-2">
+                &nbsp;
+              </div>
+              <div class="col-8">
+                <form class="row g-3" id="contentsCreateForm" onsubmit="return contentsCreate_createContents()">
+                  <h3 id="contentsCreateTitle"></h3>
+                  <p id="contentsCreateDescription"></p>
+                  <hr>
+                  <div class="row">
+                    <div class="col-12 mb-3">
+                      <label for="contentsCreateContentTitle" class="form-label">{{ __ 'page.contents.thread.contents.create.contentTitle' }}*</label>
+                      <input type="text" class="form-control" id="contentsCreateContentTitle" required>
+                    </div>
+                    <ul class="nav nav-tabs" id="contentsCreateViewTab" role="tablist">
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="contentsCreateViewTab-source" data-bs-toggle="tab" data-bs-target="#contentsCreateViewTab-source-pane" type="button" role="tab" aria-controls="contentsCreateViewTab-source-pane" aria-selected="true">{{ __ 'page.contents.thread.contents.create.source' }}</button>
+                      </li>
+                      <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="contentsCreateViewTab-preview" data-bs-toggle="tab" data-bs-target="#contentsCreateViewTab-preview-pane" type="button" role="tab" aria-controls="contentsCreateViewTab-preview-pane" aria-selected="false" onclick="contentsCreateModal_previewContent()">{{ __ 'page.contents.thread.contents.create.preview' }}</button>
+                      </li>
+                    </ul>
+                    <div class="tab-content" id="contentsCreateViewTabContent">
+                      <div class="tab-pane fade show active" id="contentsCreateViewTab-source-pane" role="tabpanel" aria-labelledby="contentsCreateViewTab-source" tabindex="0">
+                        <label for="contentsCreateContent" class="form-label">{{ __ 'page.contents.thread.contents.create.content' }}*</label>
+                        <textarea class="form-control" id="contentsCreateContent" rows="6" required></textarea>
+                      </div>
+                      <div class="tab-pane fade" id="contentsCreateViewTab-preview-pane" role="tabpanel" aria-labelledby="contentsCreateViewTab-preview" tabindex="0">
+                        <label for="contentsCreateContentPreview" class="form-label">{{ __ 'page.contents.thread.contents.create.contentPreview' }}</label>
+                        <div id="contentsCreateContentPreview" class="border p-2 contents-preview"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-end">{{ __ 'page.contents.thread.contents.create.EssDesc' }}</div>
+                  <div>
+                    <button type="submit" class="btn btn-primary" id="contentsCreateSubmit">
+                      <span id="contentsDoCreateText">{{ __ 'page.contents.thread.contents.create.doCreate' }}</span>
+                      <span id="contentsDoCreateSpinner" class="d-none">
+                        <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                        {{ __ 'page.contents.thread.contents.create.creating' }}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+              <div class="col-2">
+                &nbsp;
+              </div>
+            </div>
+<script>
+  function contentsCreate_setTarget(contentsId, title) {
+    contentsCreateTargetContentsId = contentsId;
+    document.getElementById('postArea').classList.remove('d-none');
+
+    document.getElementById('contentsCreateTitle').innerText = format_string('{{ __ "page.contents.thread.contents.create.title" }}', escape_html(title));
+    document.getElementById('contentsCreateDescription').innerText = format_string('{{ __ "page.contents.thread.contents.create.description" }}', escape_html(title));
+    document.getElementById('contentsCreateContentTitle').value = '';
+    document.getElementById('contentsCreateContent').value = '';
+    document.getElementById('contentsCreateContentPreview').innerText = '{{ __ "page.contents.thread.contents.create.previewEmpty" }}';
+    // タブをソースに
+    const tabTrigger = new bootstrap.Tab(document.querySelector('#contentsCreateViewTab button[id="contentsCreateViewTab-source"]'));
+    tabTrigger.show();
+  }
+  let contentsCreateTargetContentsId = null;
+  function contentsCreate_createContents() {
+    if (!contentsCreateTargetContentsId){
+      alert('{{ __ "page.contents.thread.contents.create.noTargetError" }}');
+      return false;
+    }
+    // 入力チェック
+    const contentTitle = document.getElementById('contentsCreateContentTitle').value;
+    const content = document.getElementById('contentsCreateContent').value;
+    $("#contentsCreateSubmit").prop("disabled", true);
+    $("#contentsDoCreateText").addClass("d-none");
+    $("#contentsDoCreateSpinner").removeClass("d-none");
+    $.ajax({
+      type: 'POST',
+      url: '{{ baseUrl }}/api/contents/contentsCreate',
+      data: {
+        targetContentsId: contentsCreateTargetContentsId,
+        contentTitle: contentTitle,
+        content: content,
+        parser: 'default',
+        mode: 'list',
+        _csrf: '{{_csrf}}'
+      },
+      dataType: 'json',
+      success: function(data) {
+        if (data && !data.error) {
+          // 作成成功
+          // reload
+          location.reload();          
+        }else{
+          // TODO: スレッド作成失敗時の処理
+          alert('{{ __ "page.contents.thread.contents.create.createError" }}');
+        }
+      },
+      error: function() {
+        // TODO: エラーハンドリング
+        alert('{{ __ "page.contents.thread.modal.create.createError" }}');
+      },
+      complete: function() {
+        $("#contentsCreateSubmit").prop("disabled", false);
+        $("#contentsDoCreateText").removeClass("d-none");
+        $("#contentsDoCreateSpinner").addClass("d-none");
+      }
+    });
+    return false; // フォーム送信をキャンセル
+  }
+  function contentsCreate_previewContent() {
+    const content = document.getElementById('contentsCreateContent').value;
+    if (content.trim().length === 0) {
+      $('#contentsCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewEmpty" }}');
+      return;
+    }
+    $('#contentsCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewLoading" }}');
+    $.ajax({
+      type: 'POST',
+      url: '{{ baseUrl }}/api/contents/parse',
+      data: {
+        content: content,
+        parser: 'default',
+        _csrf: '{{_csrf}}'
+      },
+      dataType: 'json',
+      success: function(data) {
+        if (data && data.contentsparsed) {
+          $('#contentsCreateContentPreview').html(data.contentsparsed);
+          // highlight.js
+          document.querySelectorAll('#contentsCreateContentPreview pre code').forEach((block) => {
+            hljs.highlightElement(block);
+          });
+        } else {
+          $('#contentsCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewError" }}');
+        }
+      },
+      error: function() {
+        $('#contentsCreateContentPreview').text('{{ __ "page.contents.thread.contents.create.previewError" }}');
+      }
+    });
+  }
+</script>
           </div>
         </div>
         <div class="col-md-3 d-none d-md-block" id="mainNavi">Navi</div>
