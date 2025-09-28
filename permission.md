@@ -171,6 +171,14 @@ get subgroups:user:1 2,3,1
 
 ## template
 
+* user_permission_template
+
+| id   | user_id | permtype | 
+| ---- | ----    | ----     |
+| 1    | 1       | list     |
+| 2    | 1       | get      |
+| 3    | 1       | update   |
+
 * group_permission_template
 
 | id   | group_id | permtype | 
@@ -185,11 +193,12 @@ get subgroups:user:1 2,3,1
 
 * tiers
 
-| id   | tier_name |
-| ---- | ----      |
-| 1    | owner     |
-| 2    | admin     |
-
+| id   | tier_name | parent_id |
+| ---- | ----      | ----      |
+| 1    | owner     | 2         |
+| 2    | admin     | 3         |
+| 3    | user      | 4         |
+| 4    | guest     | -1        |
 
 * tier_permission_template
 
