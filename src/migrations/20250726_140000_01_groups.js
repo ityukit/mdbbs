@@ -6,9 +6,13 @@ export function up(knex) {
     table.text('description');
     table.boolean('visibled').notNullable().defaultTo(true);
     table.boolean('enabled').notNullable().defaultTo(true);
+    table.bigInteger('parent_group_id').notNullable().defaultTo(-1);
 
-    table.timestamp('updated_at', { precision: 6 }).notNullable().defaultTo(knex.fn.now(6));
+    table.bigInteger('created_user_id').notNullable();
+    table.bigInteger('updated_user_id').notNullable();
+
     table.timestamp('created_at', { precision: 6 }).notNullable().defaultTo(knex.fn.now(6));
+    table.timestamp('updated_at', { precision: 6 }).notNullable().defaultTo(knex.fn.now(6));
 
     table.index(['display_name']);
   });
