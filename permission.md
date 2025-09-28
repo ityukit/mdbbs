@@ -93,29 +93,31 @@
 
 ## 定義
 
+* permission_inheritance
+
+| id   | name       | parent_id |
+| ---- | ----       | ----      |
+| 1    | treereader | -1        |
+
+
 * resources
 
-| id   | target | targetid |
-| ---- | ----   | ----     |
-| 1    | tree   | 1        |
+| id   | target | targetid | inheritance_id |
+| ---- | ----   | ----     | ----           |
+| 1    | tree   | 1        | 1              |
 
 unique(target,targetid)
 
 * access_rules
 
-| id   | ptarget_id | permtype | unit | unitid | allow | orderno | source        | sourceid |
-| ---- | ----       | ----     | ---- | ----   | ----  | ----    | ----          | ----     |
-| 1    | 1          | list     | user | 1      | true  | 1       | tier_template | 1        |
+| id   | inheritance_id | action  | unit | unitid | allow | orderno | source        | sourceid |
+| ---- | ----           | ----    | ---- | ----   | ----  | ----    | ----          | ----     |
+| 1    | 1              | list    | user | 1      | true  | 1       | tier_template | 1        |
 
+unit: user, group, tier, any
 created_by: tier_template, group_template, group, user
 
 unique(ptaget_id,permtype,orderno)
-
-* resource_permission_inheritance
-
-| id   | parent_ptarget_id | child_ptarget_id |
-| ---- | ----              | ----             |
-| 1    | -1                | 1                |
 
 with recursivce t_permtree
   select permtarget.id, permtree.parent_ptarget_id, permtree.child_ptarget_id
