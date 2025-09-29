@@ -6,6 +6,7 @@ export function up(knex) {
     table.text('description');
     table.boolean('visibled').notNullable().defaultTo(true);
     table.boolean('enabled').notNullable().defaultTo(true);
+    table.boolean('locked').notNullable().defaultTo(false);
 
     table.bigint('updated_user_id').notNullable();
     table.bigint('created_user_id').notNullable();

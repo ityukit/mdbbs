@@ -6,6 +6,8 @@ export function up(knex) {
     table.text('description');
     table.boolean('visibled').notNullable().defaultTo(true);
     table.boolean('enabled').notNullable().defaultTo(true);
+    table.boolean('locked').notNullable().defaultTo(false);
+    table.boolean('deleted').notNullable().defaultTo(false);
 
     table.bigint('first_sort_key').notNullable().defaultTo(0);
     table.text('second_sort_key').notNullable().defaultTo('');

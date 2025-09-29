@@ -1,7 +1,7 @@
 export function up(knex) {
   return knex.schema.createTable('users', function createTable(table) {
     table.bigIncrements('id').primary();
-    table.text('login_id').notNullable().unique();
+    table.text('login_id').unique(); // if null, user deleted
     table.text('hashed_password'); // if null, can't login
     table.text('display_name').notNullable();
     table.text('email');
