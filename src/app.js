@@ -1,3 +1,4 @@
+import whyIsNodeRunning from 'why-is-node-running';
 import { fileURLToPath } from 'node:url';
 import util from 'node:util';
 import crypto from 'crypto'; 
@@ -208,11 +209,7 @@ process.on('SIGTERM', () => {
     database.destroy();
     logger.info('SIGTERM signal received.');
   });
-  redisstore.destroy();
-  setTimeout(() => {
-    logger.warn('Forcing shutdown after 10 seconds.');
-    process.exit(1);
-  }, 10000);
+  //redisstore.destroy();
 });
     
 export default {

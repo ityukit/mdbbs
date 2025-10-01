@@ -128,13 +128,14 @@ export default function setting(env, home, defaultconfig, config) {
     cookie: 'locales',
     queryParameter: 'lang',
     directory: home + './src/locales',
-    autoReload: true,
+    autoReload: false,
     updateFiles: false,
     objectNotation: true,
     syncFiles: false,
     extension: '.yaml',
     parser: yaml,
     preserveLegacyCase: true,
+    watch: false,
     mustacheConfig: {
       disable: false
     }

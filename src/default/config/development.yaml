@@ -26,8 +26,10 @@ global:
       min: 10
       max: 50
     migrations:
-      directory: '../migrations'
+      directory: '../db/migrations'
       tableName: 'knex_migrations'
+    seeds:
+      directory: ['../db/seeds/default', '../db/seeds/development']
 
   redis:
     host: '127.0.0.1'

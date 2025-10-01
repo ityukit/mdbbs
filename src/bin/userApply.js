@@ -32,6 +32,11 @@ const {
         clearPassword: {
           type: "boolean",
           short: "c"
+        },
+        defaultTier: {
+          type: "string",
+          short: "t",
+          default: "owner"
         }
     }
 });
@@ -40,11 +45,12 @@ const {
 
 if (!values.id) {
     console.error("Error: User ID is required.");
-    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword]");
+    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword] [--defaultTier <tier>]");
     console.error("  --id or -i: User ID (required)");
     console.error("  --name or -n: Display name (optional)");
     console.error("  --password or -p: Password (optional)");
     console.error("  --clearPassword or -c: Clear password (optional)");
+    console.error("  --defaultTier or -t: Default tier (optional)");
     console.error('Example: npm run userApply -- --id adm --name "AdminUser" --password "securepassword"');
     process.exit(1);
 }
@@ -100,6 +106,7 @@ await database.transaction(async (trx) => {
     console.log('User Name:', display_name);
     console.log('User Password:', hashed_password);
     console.log('User Password Clear:', values.clearPassword);
+    console.log('User Default Tier:', values.defaultTier);
   } catch (error) {
     console.error("Error registering user:", error);
     await trx.rollback();
