@@ -1,4 +1,3 @@
-import whyIsNodeRunning from 'why-is-node-running';
 import { fileURLToPath } from 'node:url';
 import util from 'node:util';
 import crypto from 'crypto'; 

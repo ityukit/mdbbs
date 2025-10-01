@@ -28,10 +28,10 @@
     "dev:start": "NODE_ENV=development node ./src/bin/run.js",
     "dev:userApply": "NODE_ENV=development node ./src/bin/userApply.js",
     "dev:sample": "npm run dev:build:db:reset && NODE_ENV=development node",
-    "dev": "npm run dev:build:migrate && npm run dev:start"
+    "dev": "npm run dev:build:db && npm run dev:start"
   },
   "author": "Ituki Kirihara",
-  "license": "UNLICENSED",
+  "license": "undefined",
   "dependencies": {
     "@aws-sdk/client-s3": "3.864.0",
     "axios": "1.11.0",

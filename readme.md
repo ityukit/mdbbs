@@ -1,5 +1,20 @@
 # ityukit-memo
 
+## 重要な注意
+
+* version 1.0まではスキーマは破壊的に変更されます
+* version 1.0までのバージョンアップはdrop db & create dbが基本です
+  * 何を言っているのかというと、バージョンアップ時にデータの保存がされないケースが多いです
+
+## インストールに必須なもの
+
+* nodejs
+* PostgreSQL
+
+### あると速くなるかもしれないもの(必須ではない)
+
+* redis
+
 ## コンフィグ設定
 
 * オーバーライド用ディレクトリ作成
@@ -38,7 +53,12 @@ global:
 PASSWORD_HASHING_SUGAR_KEY=システム固有の乱数文字列１を設定
 PASSWORD_HASHING_PEPPER_KEY=システム固有の乱数文字列２を設定
 ```
- 
+
+## インストール
+
+```
+npm install
+```
 
 ## PostgreSQLを使っている場合は、以下のコマンドでDB作成
 * PostgreSQL以外は現在未サポート

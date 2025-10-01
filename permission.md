@@ -23,8 +23,9 @@
 * getDefault
 * updateDefault
 * deleteDefault
-* permread
-* permchange
+* permission
+  * read
+  * change
 
 ### for tree/thread
 
@@ -43,7 +44,7 @@
 ### for content
 * update
   * contents
-* viewlog
+* viewlogs
 
 ### for user/group
 
@@ -56,13 +57,16 @@
 * getDetails
 * create
 * update
+  * name
+  * description
 * updatestatus
   * visible
   * enable
   * lock
 * detele
-* permread
-* permchange
+* permission
+  * read
+  * change
 
 ### for user
 * setpassword
@@ -72,6 +76,24 @@
 * removeuser
 * addgroup
 * removegroup
+
+### for change_permission
+* permission_inheritance
+* user_permission_template
+* group_permission_template
+
+### for tier
+* create
+* delete
+* change_name
+* change_template
+* user
+  * add
+  * remove
+* group
+  * add
+  * remove
+
 
 ## GUIから以下のテンプレートグループ作成可能
 * owner
@@ -173,11 +195,11 @@ get subgroups:user:1 2,3,1
 
 * user_permission_template
 
-| id   | user_id | permtype | 
-| ---- | ----    | ----     |
-| 1    | 1       | list     |
-| 2    | 1       | get      |
-| 3    | 1       | update   |
+| id   | permtype | 
+| ---- | ----     |
+| 1    | list     |
+| 2    | get      |
+| 3    | update   |
 
 * group_permission_template
 
