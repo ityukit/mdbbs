@@ -107,9 +107,18 @@ export default {
     let allowed = null;
     // check user_self_permission
     if (allowed === null && selfObject.userid === userid){
-      const row = await trx('user_self_permission').select('is_allow').where({ action: actionid }).first();
-      if (row) {
-        allowed = row.is_allow;
+      let cAllowed = await cache.hget(`permissions:userselfpermissions`, actionid);
+      if (cAllowed === null) {
+        const row = await trx('user_self_permission').select('is_allow').where({ action: actionid }).first();
+        if (row) {
+          allowed = row.is_allow;
+        }
+        await cache.hset(`permissions:userselfpermissions`, actionid, JSON.stringify(allowed));
+      }else{
+        cAllowed = JSON.parse(cAllowed);
+        if (cAllowed === true || cAllowed === false) {
+          allowed = cAllowed;
+        }
       }
     }
     // check group_self_permission
@@ -132,10 +141,18 @@ export default {
         }
       }
       if (inGroup){
-        const rows = await trx('group_self_permission').select('is_allow').whereIn('action', actionid);
-        if (rows.length > 0) {
-          // take the first one
-          allowed = rows[0].is_allow;
+        let cAllowed = await cache.hget(`permissions:groupselfpermissions`, actionid);
+        if (cAllowed === null) {
+          const row = await trx('group_self_permission').select('is_allow').whereIn('action', actionid).first();
+          if (row) {
+            allowed = row.is_allow;
+          }
+          await cache.hset(`permissions:groupselfpermissions`, actionid, JSON.stringify(allowed));
+        }else{
+          cAllowed = JSON.parse(cAllowed);
+          if (cAllowed === true || cAllowed === false) {
+            allowed = cAllowed;
+          }
         }
       }
     }
@@ -190,10 +207,18 @@ export default {
         }
       }
       if (inTier){
-        const rows = await trx('tier_self_permission').select('is_allow').whereIn('action', actionid);
-        if (rows.length > 0) {
-          // take the first one
-          allowed = rows[0].is_allow;
+        let cAllowed = await cache.hget(`permissions:tierselfpermissions`, actionid);
+        if (cAllowed === null) {
+          const row = await trx('tier_self_permission').select('is_allow').whereIn('action', actionid).first();
+          if (row) {
+            allowed = row.is_allow;
+          }
+          await cache.hset(`permissions:tierselfpermissions`, actionid, JSON.stringify(allowed));
+        }else{
+          cAllowed = JSON.parse(cAllowed);
+          if (cAllowed === true || cAllowed === false) {
+            allowed = cAllowed;
+          }
         }
       }
     }
@@ -321,7 +346,7 @@ export default {
           // self permission only
           allowed = await this.isAllowedSelf(trx, userid, actionid,selfObject);
         }
-        if (allowed === null) allowed = false;
+        if (allowed === null) allowed = false; // default deny
         if (allowed) {
           await cache.hset(pkey, skey, allowed.toString());
         }

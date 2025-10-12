@@ -18,7 +18,7 @@ export function seed(knex) {
     const userid = await insert(trx, 'user', -1);
     const poweruserid = await insert(trx, 'poweruser', userid);
     const adminid = await insert(trx, 'admin', poweruserid);
-    const ownerid = await insert(trx, 'owner', adminid);
+    const ownerid = await insert(trx, 'owner', adminid);   
     const modelatorid = await insert(trx, 'moderator', -1);
   });
 }
