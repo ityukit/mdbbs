@@ -108,7 +108,7 @@ export default {
     // check user_self_permission
     if (allowed === null && selfObject.userid === userid){
       let cAllowed = await cache.hget(`permissions:userselfpermissions`, actionid);
-      if (cAllowed === null) {
+      if (cAllowed === undefined || cAllowed === null) {
         const row = await trx('user_self_permission').select('is_allow').where({ action: actionid }).first();
         if (row) {
           allowed = row.is_allow;
@@ -124,15 +124,7 @@ export default {
     // check group_self_permission
     if (allowed === null && selfObject.groupids && selfObject.groupids.length > 0) {
       // get groups for user
-      let group_ids = await cache.hget(`permissions:usergroups:${userid}`, 'group_ids');
-      if (group_ids === null) {
-        // not in cache, check db
-        const rows = await trx('map_usergroup').select('group_id').where({ user_id: userid });
-        group_ids = rows.map(r => r.group_id);
-        await cache.hset(`permissions:usergroups:${userid}`, 'group_ids', JSON.stringify(group_ids));
-      }else{
-        group_ids = JSON.parse(group_ids);
-      }
+      let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
       let inGroup = false;
       for(const gid of group_ids){
         if (selfObject.groupids.indexOf(gid) >= 0) {
@@ -142,7 +134,7 @@ export default {
       }
       if (inGroup){
         let cAllowed = await cache.hget(`permissions:groupselfpermissions`, actionid);
-        if (cAllowed === null) {
+        if (cAllowed === undefined || cAllowed === null) {
           const row = await trx('group_self_permission').select('is_allow').whereIn('action', actionid).first();
           if (row) {
             allowed = row.is_allow;
@@ -159,38 +151,7 @@ export default {
     // check tier_self_permission
     if (allowed === null && selfObject.tierids && selfObject.tierids.length > 0) {
       // get tiers for user + groups
-      let tier_ids = await cache.hget(`permissions:usertiers:${userid}`, 'tier_ids');
-      if (tier_ids === null) {
-        // not in cache, check db
-        const rows = await trx('map_usertier').select('tier_id').where({ user_id: userid });
-        tier_ids = rows.map(r => r.tier_id);
-        await cache.hset(`permissions:usertiers:${userid}`, 'tier_ids', JSON.stringify(tier_ids));
-      }else{
-        tier_ids = JSON.parse(tier_ids);
-      }
-      // get groups for user
-      let group_ids = await cache.hget(`permissions:usergroups:${userid}`, 'group_ids');
-      if (group_ids === null) {
-        // not in cache, check db
-        const rows = await trx('map_usergroup').select('group_id').where({ user_id: userid });
-        group_ids = rows.map(r => r.group_id);
-        await cache.hset(`permissions:usergroups:${userid}`, 'group_ids', JSON.stringify(group_ids));
-      }else{
-        group_ids = JSON.parse(group_ids);
-      }
-      let group_tier_ids = await cache.hget(`permissions:usertiers:${userid}`, 'group_tier_ids');
-      if (group_tier_ids === null){
-        group_tier_ids = [];
-        // not in cache, check db
-        for (const group_id of group_ids) {
-          const rows = await trx('map_grouptier').select('tier_id').where({ group_id });
-          const ids = rows.map(r => r.tier_id);
-          group_tier_ids.push(...ids);
-        }
-        await cache.hset(`permissions:usertiers:${userid}`, 'group_tier_ids', JSON.stringify(group_tier_ids));
-      } else {
-        group_tier_ids = JSON.parse(group_tier_ids);
-      }
+      let tier_ids = await this.getTierIdsByUser(trx, userid); // ensure cache
       let inTier = false;
       for(const tid of tier_ids){
         if (selfObject.tierids.indexOf(tid) >= 0) {
@@ -198,17 +159,9 @@ export default {
           break;
         }
       }
-      if (!inTier && group_tier_ids && group_tier_ids.length > 0) {
-        for (const gid of group_tier_ids) {
-          if (selfObject.tierids.indexOf(gid) >= 0) {
-            inTier = true;
-            break;
-          }
-        }
-      }
       if (inTier){
         let cAllowed = await cache.hget(`permissions:tierselfpermissions`, actionid);
-        if (cAllowed === null) {
+        if (cAllowed === undefined || cAllowed === null) {
           const row = await trx('tier_self_permission').select('is_allow').whereIn('action', actionid).first();
           if (row) {
             allowed = row.is_allow;
@@ -228,131 +181,85 @@ export default {
   isAllowed: async function(trx, userid, permission_id, target, target_id, selfObject) {
     const pkey = `permissions:isAllowed:${target}:${target_id}`;
     const skey = `${userid}:${permission_id}`;
-    return await cache.run(async () => {
-      let allowed = await cache.hget(pkey, skey);
-      if (allowed === null) {
+    let allowed = await cache.hget(pkey, skey);
+    if (allowed === undefined || allowed === null) {
+      // not in cache, check db
+      let actionid = await cache.hget(`permissions:actionid`, permission_id);
+      if (actionid === undefined || actionid === null) {
+        const row = await trx('permissions').select('id').where({ permission_id: permission_id }).first();
+        if (!row) {
+          // no such action, so no permissions
+          await cache.hset(pkey, skey, 'false');
+          return retAllowed(false);
+        }
+        actionid = row.id;
+        await cache.hset(`permissions:actionid`, permission_id, actionid.toString());
+      } else {
+        actionid = utils.parseSafeInt(actionid);
+      }
+      // check resources
+      let inheritance_id = await cache.hget(`permissions:resources:${target}:${target_id}`, 'inheritance_id');
+      if (inheritance_id === undefined || inheritance_id === null) {
         // not in cache, check db
-        let actionid = await cache.hget(`permissions:actionid`, permission_id);
-        if (actionid === null) {
-          const row = await trx('permissions').select('id').where({ permission_id: permission_id }).first();
-          if (!row) {
-            // no such action, so no permissions
-            await cache.hset(pkey, skey, 'false');
-            return retAllowed(false);
-          }
-          actionid = row.id;
-          await cache.hset(`permissions:actionid`, permission_id, actionid.toString());
-        } else {
-          actionid = utils.parseSafeInt(actionid);
-        }
-        // check resources
-        let inheritance_id = await cache.hget(`permissions:resources:${target}:${target_id}`, 'inheritance_id');
-        if (inheritance_id === null) {
-          // not in cache, check db
-          const res = await trx('resources').select('inheritance_id').where({ target, target_id }).first();
-          if (!res) {
-            // no resource, self permission only
-            allowed = await this.isAllowedSelf(trx, userid, actionid,selfObject);
-            if (allowed === null) allowed = false;
-            await cache.hset(pkey, skey, allowed.toString());
-            return retAllowed(allowed);
-          }
-          inheritance_id = res.inheritance_id;
-          await cache.hset(`permissions:resources:${target}:${target_id}`, 'inheritance_id', inheritance_id.toString());
-        }else{
-          inheritance_id = utils.parseSafeInt(inheritance_id);
-        }
-        // get groups for user
-        let group_ids = await cache.hget(`permissions:usergroups:${userid}`, 'group_ids');
-        if (group_ids === null) {
-          // not in cache, check db
-          const rows = await trx('map_usergroup').select('group_id').where({ user_id: userid });
-          group_ids = rows.map(r => r.group_id);
-          await cache.hset(`permissions:usergroups:${userid}`, 'group_ids', JSON.stringify(group_ids));
-        }else{
-          group_ids = JSON.parse(group_ids);
-        }
-        // get tier for user
-        let tier_ids = await cache.hget(`permissions:usertiers:${userid}`, 'tier_ids');
-        if (tier_ids === null) {
-          // not in cache, check db
-          const rows = await trx('map_usertier').select('tier_id').where({ user_id: userid });
-          tier_ids = rows.map(r => r.tier_id);
-          await cache.hset(`permissions:usertiers:${userid}`, 'tier_ids', JSON.stringify(tier_ids));
-        }else{
-          tier_ids = JSON.parse(tier_ids);
-        }
-        // get tier for groups
-        let group_tier_ids = await cache.hget(`permissions:usertiers:${userid}`, 'group_tier_ids');
-        if (group_tier_ids === null){
-          for (const group_id of group_ids) {
-            let tgids = await cache.hget(`permissions:groptiers:${group_id}`, 'tier_ids');
-            if (tgids === null) {
-              // not in cache, check db
-              const rows = await trx('map_grouptier').select('tier_id').where({ group_id });
-              tgids = rows.map(r => r.tier_id);
-              await cache.hset(`permissions:groptiers:${group_id}`, 'tier_ids', JSON.stringify(tgids));
-            }else{
-              tgids = JSON.parse(tgids);
-            }
-            group_tier_ids = group_tier_ids.concat(tgids);
-          }
-          await cache.hset(`permissions:usertiers:${userid}`, 'group_tier_ids', JSON.stringify(group_tier_ids));
-        } else {
-          group_tier_ids = JSON.parse(group_tier_ids);
-        }
-        // now we have inheritance_id, user_id, group_ids, tier_ids, group_tier_ids
-        // check access_rules
-        allowed = null;
-        let current_inheritance_id = inheritance_id;
-        while(allowed === null && current_inheritance_id > 0) {
-          const rows = await trx.select('is_allow')
-            .from('access_rules')
-            .where('inheritance_id', current_inheritance_id)
-            .andWhere('action', actionid)
-            .andWhere(function() {
-              this.where(function() {
-                this.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
-              }).orWhere(function() {
-                if (group_ids.length > 0) {
-                  this.where('unit', this.UNIT_GROUP).andWhereIn('unit_id', group_ids);
-                }
-              }).orWhere(function() {
-                if (tier_ids.length > 0) {
-                  this.where('unit', this.UNIT_TIER).andWhereIn('unit_id', tier_ids);
-                }
-              }).orWhere(function() {
-                if (group_tier_ids.length > 0) {
-                  this.where('unit', this.UNIT_TIER).andWhereIn('unit_id', group_tier_ids);
-                }
-              }).orWhere(function() {
-                this.where('unit', this.UNIT_ALL);
-              });
-            }.bind(this))
-            .orderBy('orderno', 'asc')
-            .limit(1);
-          if (rows.length === 0) {
-            const res = await trx('inheritance').select('parent_id').where({ id: current_inheritance_id }).first();
-            if (!res) {
-              current_inheritance_id = -1;
-            } else {
-              current_inheritance_id = res.parent_id;
-            }
-          } else {
-            allowed = rows[0].is_allow;
-          }
-        }
-        if (allowed === null) {
-          // self permission only
+        const res = await trx('resources').select('inheritance_id').where({ target, target_id }).first();
+        if (!res) {
+          // no resource, self permission only
           allowed = await this.isAllowedSelf(trx, userid, actionid,selfObject);
-        }
-        if (allowed === null) allowed = false; // default deny
-        if (allowed) {
+          if (allowed === null) allowed = false;
           await cache.hset(pkey, skey, allowed.toString());
+          return retAllowed(allowed);
+        }
+        inheritance_id = res.inheritance_id;
+        await cache.hset(`permissions:resources:${target}:${target_id}`, 'inheritance_id', inheritance_id.toString());
+      }else{
+        inheritance_id = utils.parseSafeInt(inheritance_id);
+      }
+      // get groups for user
+      let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
+      // get tier for user
+      let tier_ids = await this.getTierIdsByUser(trx, userid); // ensure cache
+      // now we have inheritance_id, user_id, group_ids, tier_ids, group_tier_ids
+      // check access_rules
+      allowed = null;
+      let current_inheritance_id = inheritance_id;
+      while(allowed === null && (current_inheritance_id !== null && current_inheritance_id > 0)) {
+        const rows = await trx.select('is_allow')
+          .from('access_rules')
+          .where('inheritance_id', current_inheritance_id)
+          .andWhere('action', actionid)
+          .andWhere(function() {
+            this.where(function() {
+              this.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
+            }).orWhere(function() {
+              if (group_ids.length > 0) {
+                this.where('unit', this.UNIT_GROUP).andWhereIn('unit_id', group_ids);
+              }
+            }).orWhere(function() {
+              if (tier_ids.length > 0) {
+                this.where('unit', this.UNIT_TIER).andWhereIn('unit_id', tier_ids);
+              }
+            }).orWhere(function() {
+              this.where('unit', this.UNIT_ALL);
+            });
+          }.bind(this))
+          .orderBy('orderno', 'asc')
+          .limit(1);
+        if (rows.length === 0) {
+          current_inheritance_id = await this.getParentInheritanceId(trx, current_inheritance_id);
+        } else {
+          allowed = rows[0].is_allow;
         }
       }
-      return retAllowed(allowed);
-    });
+      if (allowed === null) {
+        // self permission only
+        allowed = await this.isAllowedSelf(trx, userid, actionid,selfObject);
+      }
+      if (allowed === null) allowed = false; // default deny
+      if (allowed) {
+        await cache.hset(pkey, skey, allowed.toString());
+      }
+    }
+    return retAllowed(allowed);
   },
 
   createNewInheritance: async function(trx, parent_id, name, addTemplate, force_insert_id) {
@@ -432,7 +339,7 @@ export default {
     return id;
   },
 
-  createResource: async function(trx, target, target_id, parent_target_id, isCreateInheritance, isCreateNewInheritance) {
+  createResource: async function(trx, target, target_id, parent_target, parent_target_id, isCreateInheritance, isCreateNewInheritance) {
     let inheritance_id = 1; // default to root
     let parent_inheritance_id = 1; // default to root
     // check if already exists
@@ -440,7 +347,7 @@ export default {
     if (cres) return cres.inheritance_id;
     // check parent
     if (parent_target_id && parent_target_id > 0) {
-      const pres = await trx('resources').select('inheritance_id').where({ target, target_id: parent_target_id }).first();
+      const pres = await trx('resources').select('inheritance_id').where({ target: parent_target, target_id: parent_target_id }).first();
       if (pres) {
         parent_inheritance_id = pres.inheritance_id;
         inheritance_id = parent_inheritance_id;
@@ -580,21 +487,55 @@ export default {
     }
   },
   getInheritanceId: async function(trx, target, target_id) {
+    let inheritance_id = await cache.hget(`permissions:resources:${target}:${target_id}`, 'inheritance_id');
+    if (inheritance_id !== undefined && inheritance_id !== null) return utils.parseSafeInt(inheritance_id);
+    // not in cache, check db
     const cres = await trx('resources').select('inheritance_id').where({ target, target_id }).first();
-    return cres ? cres.inheritance_id : null;
+    inheritance_id = cres ? cres.inheritance_id : null;
+    if (inheritance_id !== null) {
+      await cache.hset(`permissions:resources:${target}:${target_id}`, 'inheritance_id', inheritance_id.toString());
+    }
+    return inheritance_id;
   },
   getParentInheritanceId: async function(trx, inheritance_id) {
     if (inheritance_id <= 0) return null;
+    let parent_inheritance_id = await cache.hget(`permissions:inheritance_parent`, inheritance_id.toString());
+    if (parent_inheritance_id !== undefined && parent_inheritance_id !== null) {
+      return utils.parseSafeInt(parent_inheritance_id);
+    }
+    // not in cache, check db
     const cres = await trx('permission_inheritance').select('parent_id').where({ id: inheritance_id }).first();
-    return cres ? cres.parent_id : null;
+    parent_inheritance_id = cres ? cres.parent_id : null;
+    if (parent_inheritance_id !== null) {
+      await cache.hset(`permissions:inheritance_parent`, inheritance_id.toString(), parent_inheritance_id.toString());
+    }
+    return parent_inheritance_id;
   },
-  getGroupIDByName: async function(trx, name) {
+  getGroupIdByName: async function(trx, name) {
+    let group_id = await cache.hget(`permissions:groups:${name}`, 'id');
+    if (group_id !== undefined && group_id !== null) return utils.parseSafeInt(group_id);
     const row = await trx('groups').select('id').where({ group_id: name }).first();
-    return row ? row.id : null;
+    group_id = row ? row.id : null;
+    if (group_id !== null) {
+      await cache.hset(`permissions:groups:${name}`, 'id', group_id.toString());
+    }
+    return group_id;
+  },
+  getGroupIdsByUser: async function(trx, userid) {
+    let group_ids = await cache.hget(`permissions:usergroups:${userid}`, 'group_ids');
+    if (group_ids !== undefined && group_ids !== null) {
+      group_ids = JSON.parse(group_ids);
+      return group_ids;
+    }
+    // not in cache, check db
+    const rows = await trx('map_usergroup').select('group_id').where({ user_id: userid });
+    group_ids = rows.map(r => r.group_id);
+    await cache.hset(`permissions:usergroups:${userid}`, 'group_ids', JSON.stringify(group_ids));
+    return group_ids;
   },
   checkUserInGroup: async function(trx, userid, groupid) {
-    const row = await trx('map_usergroup').select('id').where({ user_id: userid, group_id: groupid }).first();
-    return row ? true : false;
+    let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
+    return group_ids.indexOf(groupid) >= 0;
   },
   addGroup: async function(trx, userid, groupid) {
     await trx('map_usergroup').insert({ user_id: userid, group_id: groupid });
@@ -604,17 +545,75 @@ export default {
     await trx('map_usergroup').where({ user_id: userid, group_id: groupid }).del();
     await cache.del(`permissions:usergroups:${userid}`);
   },
-  getTierIDByName: async function(trx, name) {
+  getTierIdByName: async function(trx, name) {
+    let tier_id = await cache.hget(`permissions:tiers:${name}`, 'id');
+    if (tier_id !== undefined && tier_id !== null) return utils.parseSafeInt(tier_id);
     const row = await trx('tiers').select('id').where({ name }).first();
-    return row ? row.id : null;
+    tier_id = row ? row.id : null;
+    if (tier_id !== null) {
+      await cache.hset(`permissions:tiers:${name}`, 'id', tier_id.toString());
+    }
+    return tier_id;
   },
-  checkUserInTier: async function(trx, userid, tierid) {
-    const row = await trx('map_usertier').select('id').where({ user_id: userid, tier_id: tierid }).first();
-    return row ? true : false;
+  getTierIdsByUserOnly: async function(trx, userid) {
+    let tier_ids = await cache.hget(`permissions:usertiers:${userid}`, 'tier_ids');
+    if (tier_ids !== undefined && tier_ids !== null) {
+      return JSON.parse(tier_ids);
+    }
+    // not in cache, check db
+    const rows = await trx('map_usertier').select('tier_id').where({ user_id: userid });
+    tier_ids = rows.map(r => r.tier_id);
+    await cache.hset(`permissions:usertiers:${userid}`, 'tier_ids', JSON.stringify(tier_ids));
+    return tier_ids;
+  },
+  getTierIdsByGroup: async function(trx, groupid) {
+    let tier_ids = await cache.hget(`permissions:groptiers:${groupid}`, 'tier_ids');
+    if (tier_ids !== undefined && tier_ids !== null) {
+      return JSON.parse(tier_ids);
+    }
+    // not in cache, check db
+    const rows = await trx('map_grouptier').select('tier_id').where({ group_id: groupid });
+    tier_ids = rows.map(r => r.tier_id);
+    await cache.hset(`permissions:groptiers:${groupid}`, 'tier_ids', JSON.stringify(tier_ids));
+    return tier_ids;
+  },
+  getTierIdsByUser: async function(trx, userid) {
+    let all_tier_ids = await cache.hget(`permissions:usertiers:${userid}`, 'all_tier_ids');
+    if (all_tier_ids !== undefined && all_tier_ids !== null) {
+      return JSON.parse(all_tier_ids);
+    }
+    // get tier for user
+    let tier_ids = await this.getTierIdsByUserOnly(trx, userid); // ensure cache
+    // get tier for groups
+    let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
+    if (group_ids.length > 0) {
+      for (const group_id of group_ids) {
+        let tgids = await this.getTierIdsByGroup(trx, group_id); // ensure cache
+        tier_ids = tier_ids.concat(tgids);
+      }
+    }
+    // unique
+    tier_ids = [...new Set(tier_ids)];
+    await cache.hset(`permissions:usertiers:${userid}`, 'all_tier_ids', JSON.stringify(tier_ids));
+    return tier_ids;
+  },
+  checkUserOnlyInTier: async function(trx, userid, tierid) {
+    let tier_ids = await this.getTierIdsByUser(trx, userid); // ensure cache
+    return tier_ids.indexOf(tierid) >= 0;
   },
   checkGroupInTier: async function(trx, groupid, tierid) {
-    const row = await trx('map_grouptier').select('id').where({ group_id: groupid, tier_id: tierid }).first();
-    return row ? true : false;
+    let tier_ids = await this.getTierIdsByGroup(trx, groupid); // ensure cache
+    return tier_ids.indexOf(tierid) >= 0;
+  },
+  checkUserInTier: async function(trx, userid, tierid) {
+    if (await this.checkUserOnlyInTier(trx, userid, tierid)) return true;
+    // check groups
+    const group_ids = await this.getGroupIdsByUser(trx, userid);
+    if (group_ids.length === 0) return false;
+    for(const gid of group_ids){
+      if (await this.checkGroupInTier(trx, gid, tierid)) return true;
+    }
+    return false;
   },
   addTier_User: async function(trx, userid, tierid) {
     await trx('map_usertier').insert({ user_id: userid, tier_id: tierid });

@@ -45,6 +45,13 @@ class RedisClientWrapper {
   async expire(key, seconds) {
     return await this.client.expire(this.prefix + key, seconds);
   }
+  async clearAll() {
+    const keys = await this.client.keys(this.prefix + '*');
+    if (keys.length > 0) {
+      return await this.client.del(keys);
+    }
+    return 0;
+  }
 }
 
 export default class Redis {

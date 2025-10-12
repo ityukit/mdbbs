@@ -100,3 +100,4 @@ console.log(`Database '${databaseName}' created.`);
 
 console.log('Database setup completed successfully.');
 await database.destroy();
+process.exit(0);

@@ -86,6 +86,11 @@ class Cache {
       return await client.expire(key, seconds);
     });
   }
+  async clearAll() {
+    return await this.run(async (client) => {
+      return await client.clearAll();
+    });
+  }
 }
 const cache = new Cache();
 

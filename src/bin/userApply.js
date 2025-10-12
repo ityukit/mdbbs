@@ -100,7 +100,7 @@ await database.transaction(async (trx) => {
       }
     }
     if (values.tier) {
-      const tierid = await permissions.getTierIDByName(trx, values.tier);
+      const tierid = await permissions.getTierIdByName(trx, values.tier);
       if(!tierid){
         throw new Error(`Tier not found: ${values.tier}`);
       }
@@ -122,7 +122,9 @@ await database.transaction(async (trx) => {
   } catch (error) {
     console.error("Error registering user:", error);
     await trx.rollback();
+    process.exit(1);
   }
 });
 
 database.destroy();
+process.exit(0);

@@ -23,6 +23,10 @@ class MemoryClientWrapper {
   }
   async keys(pattern) {
     // LRUCache does not support pattern matching like Redis, so we return all keys
+    if (!pattern.endsWith('*')) {
+      return this.client.has(this.prefix + pattern) ? [this.prefix + pattern] : [];
+    }
+    pattern = pattern.slice(0, -1); // remove the '*' at the end
     return Array.from(this.client.keys()).filter(key => key.startsWith(this.prefix + pattern));
   }
   async hgetall(key) {
@@ -58,6 +62,13 @@ class MemoryClientWrapper {
   async expire(key, seconds) {
     // LRUCache does not support expiration, so we ignore this
     return true; // Indicating success
+  }
+  async clearAll() {
+    const keys = await this.client.keys(this.prefix + '*');
+    if (keys.length > 0) {
+      return await this.client.del(keys);
+    }
+    return 0;
   }
 }
 
