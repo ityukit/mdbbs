@@ -15,7 +15,7 @@ async function insert(trx, name, parent_id) {
 export function seed(knex) {
   return knex.transaction(async (trx)=>{
     const guestid = await insert(trx, 'guest', -1);
-    const userid = await insert(trx, 'user', guestid);
+    const userid = await insert(trx, 'user', -1);
     const poweruserid = await insert(trx, 'poweruser', userid);
     const adminid = await insert(trx, 'admin', poweruserid);
     const ownerid = await insert(trx, 'owner', adminid);

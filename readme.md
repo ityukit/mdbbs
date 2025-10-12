@@ -36,19 +36,53 @@ mkdir .env
 ```
 global:
   app:
+    # システムのポート番号
     port: 3000
+    # URLのホスト名の後の部分
     urlBase: /mdbbs
+    # システムの名前
     name: MDBBS
+    # 管理者名
     author: Ituki Kirihara/NI
   postgres:
     connection:
+      # PostgreSQLのホスト名
+      host: '127.0.0.1'
+      # PostgreSQLのポート番号
+      port: 5432
+      # PostgreSQLのDB名
       database: 'mdbbs'
+      # PostgreSQLのユーザ名
       user: 'mdbbs_user'
+      # PostgreSQLのパスワード
       password: 'mdbbs_password'
 ```
 
+* redisを使う場合は、以下も追加を推奨
+```
+global:
+  session:
+    # セッション管理にredisを利用
+    type: 'redis'
+  cache:
+    # キャッシュ管理にredisを利用
+    type: 'redis'
+  redis:
+    # Redisのホスト名
+    host: '127.0.0.1'
+    # Redisのポート番号
+    port: 6379
+    # RedisのDB番号
+    db: 0
+    # Redisのパスワード
+    password: ''
+```
+
+
 ###  `.env/production`に、環境変数を追加
-* 現在有効なのは以下
+* 現在有効なのは以下。
+* どっちも適当な文字列でいいです。
+* 変更するとパスワードが復元できなくなりますので、バックアップ対象です
 ```
 PASSWORD_HASHING_SUGAR_KEY=システム固有の乱数文字列１を設定
 PASSWORD_HASHING_PEPPER_KEY=システム固有の乱数文字列２を設定
@@ -140,12 +174,12 @@ npm run dev:start
 
 * production環境
 ```
-npm run build:db
+npm run build:migrate
 ```
 
 * development環境
 ```
-npm run dev:build:db
+npm run dev:build:migrate
 ```
 
 # old memo

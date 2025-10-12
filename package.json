@@ -28,6 +28,7 @@
     "dev:start": "NODE_ENV=development node ./src/bin/run.js",
     "dev:userApply": "NODE_ENV=development node ./src/bin/userApply.js",
     "dev:sample": "npm run dev:build:db:reset && NODE_ENV=development node",
+    "dev:debug:CleanRun": "npm run dev:createPGDB -- --user postgres --password postgres --rebuild && npm run dev:build:db:reset && npm run dev:userApply -- --id admin --password admin --tier owner && npm run dev:start",
     "dev": "npm run dev:build:db && npm run dev:start"
   },
   "author": "Ituki Kirihara",

@@ -1,6 +1,6 @@
 import database from '../database.js';
 import pHash from '../lib/phash.js';
-
+import permissions from '../lib/permissions.js';
 
 import init from '../init.js';
 const settings = init.getSettings();
@@ -33,7 +33,7 @@ const {
           type: "boolean",
           short: "c"
         },
-        defaultTier: {
+        tier: {
           type: "string",
           short: "t",
           default: "owner"
@@ -45,12 +45,12 @@ const {
 
 if (!values.id) {
     console.error("Error: User ID is required.");
-    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword] [--defaultTier <tier>]");
+    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword] [--tier <tier>]");
     console.error("  --id or -i: User ID (required)");
     console.error("  --name or -n: Display name (optional)");
     console.error("  --password or -p: Password (optional)");
     console.error("  --clearPassword or -c: Clear password (optional)");
-    console.error("  --defaultTier or -t: Default tier (optional)");
+    console.error("  --tier or -t: Default tier (optional) default: owner");
     console.error('Example: npm run userApply -- --id adm --name "AdminUser" --password "securepassword"');
     process.exit(1);
 }
@@ -74,7 +74,7 @@ await database.transaction(async (trx) => {
         display_name,
         hashed_password,
       });
-      id = await trx('users').select('id').where({ login_id: values.id }).first();
+      id = (await trx('users').select('id').where({ login_id: values.id }).first()).id;
     }else{
       id = existingUser.id;
       login_id = existingUser.login_id;
@@ -99,6 +99,18 @@ await database.transaction(async (trx) => {
         hashed_password = null;
       }
     }
+    if (values.tier) {
+      const tierid = await permissions.getTierIDByName(trx, values.tier);
+      if(!tierid){
+        throw new Error(`Tier not found: ${values.tier}`);
+      }
+      if (!await permissions.checkUserInTier(trx, id, tierid)){
+        await permissions.addTier_User(trx, id, tierid);
+        console.log(`User added to tier ${values.tier}`);
+      }else{
+        console.log(`User already in tier ${values.tier}`);
+      }
+    }
     await trx.commit();
     console.log("User registration/update successful");
     console.log('User ID:', id);
@@ -106,7 +118,7 @@ await database.transaction(async (trx) => {
     console.log('User Name:', display_name);
     console.log('User Password:', hashed_password);
     console.log('User Password Clear:', values.clearPassword);
-    console.log('User Default Tier:', values.defaultTier);
+    console.log('User Tier add:', values.tier);
   } catch (error) {
     console.error("Error registering user:", error);
     await trx.rollback();

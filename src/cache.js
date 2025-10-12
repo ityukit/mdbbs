@@ -25,8 +25,68 @@ class Cache {
   async run(callback) {
     return await this.cache.run(callback);
   }
+  // shorthand methods
+  async get(key) {
+    return await this.run(async (client) => {
+      return await client.get(key);
+    });
+  }
+  async set(key, value) {
+    return await this.run(async (client) => {
+      return await client.set(key, value);
+    });
+  }
+  async del(key) {
+    return await this.run(async (client) => {
+      return await client.del(key);
+    });
+  }
+  async exists(key) {
+    return await this.run(async (client) => {
+      return await client.exists(key);
+    });
+  }
+  async keys(pattern) {
+    return await this.run(async (client) => {
+      return await client.keys(pattern);
+    });
+  }
+  async hgetall(key) {
+    return await this.run(async (client) => {
+      return await client.hgetall(key);
+    });
+  }
+  async hset(key, field, value) {
+    return await this.run(async (client) => {
+      return await client.hset(key, field, value);
+    });
+  }
+  async hdel(key, field) {
+    return await this.run(async (client) => {
+      return await client.hdel(key, field);
+    });
+  }
+  async hget(key, field) {
+    return await this.run(async (client) => {
+      return await client.hget(key, field);
+    });
+  }
+  async hkeys(key) {
+    return await this.run(async (client) => {
+      return await client.hkeys(key);
+    });
+  }
+  async hvals(key) {
+    return await this.run(async (client) => {
+      return await client.hvals(key);
+    });
+  }
+  async expire(key, seconds) {
+    return await this.run(async (client) => {
+      return await client.expire(key, seconds);
+    });
+  }
 }
-
 const cache = new Cache();
 
 export default cache;

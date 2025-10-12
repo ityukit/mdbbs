@@ -1,5 +1,5 @@
 export function up(knex) {
-  return knex.schema.createTable('user_self_permission_template', function createTable(table) {
+  return knex.schema.createTable('tier_self_permission', function createTable(table) {
     table.bigIncrements('id').primary();
     
     table.bigInteger('action').notNullable();
@@ -12,5 +12,5 @@ export function up(knex) {
 }
 
 export function down(knex) {
-  return knex.schema.dropTable('user_self_permission_template');
+  return knex.schema.dropTable('tier_self_permission');
 }
