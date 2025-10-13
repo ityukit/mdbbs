@@ -86,6 +86,8 @@ export default class Redis {
     }
     this.prefix = this.base_prefix;
     this.prefix += this.module_prefix;
+    this.client = null;
+    this.clientWrapper = null;
   }
 
   async createNewClientInstance() {
@@ -94,29 +96,50 @@ export default class Redis {
     return client;
   }
 
+  async disconnect() {
+    this.logger.trace('in disconnect');
+    if (this.client !== null) {
+      try {
+        const client = this.client;
+        this.client = null;
+        this.clientWrapper = null;
+        await client.destroy();
+      } catch (e) {
+        throw e;
+      }
+    }
+  }
+
   async run(callback) {
     this.logger.trace('in run');
 
     let ret = null;
-    let client = null;
     try {
-      client = await createClient(this.clientOption).on('error', (err) =>
-        this.logger.Error(`Redis Client Error: ${err.toString()}`),
-      );
-      await client.connect();
+      if (this.client === null) {
+        const client = await this.createNewClientInstance();
+        await client.connect();
+        this.client = client;
+        this.clientWrapper = null;
+      }
+      if (this.clientWrapper === null) {
+        this.clientWrapper = new RedisClientWrapper(this.client, this.prefix);
+      }
       try {
-        ret = await callback(new RedisClientWrapper(client, this.prefix));
+        ret = await callback(this.clientWrapper);
       } catch (e) {
+        const client = this.client;
+        this.client = null;
+        this.clientWrapper = null;
         await client.destroy();
         throw e;
       }
-      await client.destroy();
-      // await client.quit();
-      client = null;
     } catch (e) {
-      if (client !== null) {
+      if (this.client !== null) {
         try {
-          // await client.quit();
+          const client = this.client;
+          this.client = null;
+          this.clientWrapper = null;
+          await client.destroy();
         } catch (e2) {
           // DO NOTHING
         }
