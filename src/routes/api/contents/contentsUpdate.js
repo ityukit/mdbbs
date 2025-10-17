@@ -26,6 +26,9 @@ async function updateContents(targetId, contentTitle, content, parser, req, res,
   if (chk[0].locked) {
     return res.status(403).json({ error: 'Contents is locked' });
   }
+  if (chk[0].title === contentTitle && chk[0].contents === content && chk[0].parser === parser) {
+    return res.status(400).json({ error: 'No changes detected' });
+  }
   if (chk[0].title !== contentTitle &&
       !await permissions.isAllowed(tx, 
                                    req.session.user.id,
