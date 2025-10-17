@@ -147,7 +147,7 @@ npm run userApply -- --id ログインID --name "ユーザの名前" --password 
 
 * development環境
 ```
-npm run userApply -- --id ログインID --name "ユーザの名前" --password "ログインパスワード"
+npm run dev:userApply -- --id ログインID --name "ユーザの名前" --password "ログインパスワード"
 ```
 
 ## 実行

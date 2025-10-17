@@ -3,7 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import database from '../../../database.js';
 import init from '../../../init.js';
 import utils from '../../../lib/utils.js';
-
+import permissions from '../../../lib/permissions.js';
 
 const settings = init.getSettings();
 
@@ -20,6 +20,15 @@ async function add_tree(name, description, parent, firstSortKey, secondSortKey, 
       return res.status(404).json({ error: 'Parent directory not found' });
     }
     parentId = chk1[0].id;
+  }
+  // check permission(parentId)
+  if (!await permissions.isAllowed(tx, 
+                                   req.session.user.id,
+                                   'tree.create',
+                                   permissions.TARGET_TREE,
+                                   parentId,
+                                   {})) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
   // dir's name
   const chk = await tx.select('dirs.id')
@@ -58,6 +67,16 @@ async function add_tree(name, description, parent, firstSortKey, secondSortKey, 
   const dir_id = await tx('dirs').insert(dir).returning('id');
   await tx('dirtree').insert({ parent_id: parentId, child_id: dir_id[0].id });
   // OK!
+  // permition set
+  await permissions.createResource(
+    tx,
+    permissions.TARGET_TREE,
+    dir_id[0].id,
+    permissions.TARGET_TREE,
+    parentId,
+    true,
+    false
+  );
   return res.json({
     message: 'dir added successfully'
   });

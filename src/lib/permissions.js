@@ -106,7 +106,7 @@ export default {
   isAllowedSelf: async function(trx, userid, actionid,selfObject) {
     let allowed = null;
     // check user_self_permission
-    if (allowed === null && selfObject.userid === userid){
+    if (allowed === null && selfObject.userids.indexOf(userid) >= 0){
       let cAllowed = await cache.hget(`permissions:userselfpermissions`, actionid);
       if (cAllowed === undefined || cAllowed === null) {
         const row = await trx('user_self_permission').select('is_allow').where({ action: actionid }).first();

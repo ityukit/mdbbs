@@ -3,7 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import database from '../../../database.js';
 import init from '../../../init.js';
 import utils from '../../../lib/utils.js';
-import { ta } from 'date-fns/locale';
+import permissions from '../../../lib/permissions.js';
 
 const settings = init.getSettings();
 
@@ -12,6 +12,15 @@ async function createContents(targetContentsId, contentsTitle, content, parser, 
   const chk = await tx.select('id').from('contents').where({ id: targetContentsId });
   if (chk.length === 0) {
     return res.status(404).json({ error: 'Target contents not found' });
+  }
+  // check permission(parentId)
+  if (!await permissions.isAllowed(tx, 
+                                   req.session.user.id,
+                                   'content.create',
+                                   permissions.TARGET_CONTENTS,
+                                   targetContentsId,
+                                   {})) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
   // check if listmode
   if (mode == 'list') {
@@ -66,6 +75,16 @@ async function createContents(targetContentsId, contentsTitle, content, parser, 
     return res.status(400).json({ error: 'Invalid mode' });
   }
   // OK!
+  // permition set
+  await permissions.createResource(
+    tx,
+    permissions.TARGET_CONTENTS,
+    contentId[0].id,
+    permissions.TARGET_CONTENTS,
+    targetContentsId,
+    true,
+    false
+  );
   return res.json({
     message: 'contents created successfully'
   });
