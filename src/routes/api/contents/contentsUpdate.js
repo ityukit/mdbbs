@@ -36,7 +36,7 @@ async function updateContents(targetId, contentTitle, content, parser, req, res,
                                    permissions.TARGET_CONTENTS,
                                    targetId,
                                    {
-                                    userids: [chk[0].updated_user_id, chk[0].created_user_id],
+                                    userids: [chk[0].created_user_id],
                                    })) {
     return res.status(403).json({ error: 'Forbidden' });
   }
@@ -47,7 +47,7 @@ async function updateContents(targetId, contentTitle, content, parser, req, res,
                                    permissions.TARGET_CONTENTS,
                                    targetId,
                                    {
-                                    userids: [chk[0].updated_user_id, chk[0].created_user_id],
+                                    userids: [chk[0].created_user_id],
                                    })) {
     return res.status(403).json({ error: 'Forbidden' });
   }
