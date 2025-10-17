@@ -37,7 +37,7 @@ async function updateContents(targetId, contentTitle, content, parser, req, res,
                                    })) {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  if (chk[0].contents !== content && chk[0].parser !== parser &&
+  if ((chk[0].contents !== content || chk[0].parser !== parser) &&
       !await permissions.isAllowed(tx, 
                                    req.session.user.id,
                                    'content.update_contents',
