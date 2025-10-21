@@ -389,7 +389,39 @@ export default {
     await cache.del(`permissions:resources:${target}:${target_id}`);
     await cache.del(`permissions:isAllowed:${target}:${target_id}`);
   },
-
+  cloneResourceInheritanceIfNeeded: async function(trx, target, target_id) {
+    const cres = await trx('resources').select('inheritance_id').where({ target, target_id }).first();
+    if (!cres) throw new Error(`Resource ${target}:${target_id} does not exist.`);
+    const inheritance_id = cres.inheritance_id;
+    // check if any other resources use the same inheritance_id
+    const ores = await trx('resources').select('id').where({ inheritance_id }).andWhereNot({ target, target_id }).limit(1).first();
+    // check if any other inheritance use the same parent_id
+    const pces = await trx('permission_inheritance').select('id').where({ parent_id: inheritance_id }).limit(1).first();
+    if (ores || pces) {
+      // other resources use this inheritance_id, so clone it
+      const new_inheritance_id = await this.createNewInheritance(trx, inheritance_id, `Cloned inheritance for ${target}:${target_id}`, false, false);
+      // copy access_rules
+      for (const row of await trx('access_rules').where({ inheritance_id })) {
+        await trx('access_rules').insert({
+          inheritance_id: new_inheritance_id,
+          action: row.action,
+          unit: row.unit,
+          unit_id: row.unit_id,
+          is_allow: row.is_allow,
+          orderno: row.orderno,
+          source: row.source,
+          source_id: row.source_id,
+        });
+      }
+      // update resource to new inheritance_id
+      await trx('resources').where({ target, target_id }).update({ inheritance_id: new_inheritance_id });
+      // invalidate cache
+      await cache.del(`permissions:resources:${target}:${target_id}`);
+      await cache.del(`permissions:isAllowed:${target}:${target_id}`);
+      return new_inheritance_id;
+    }
+    return inheritance_id;
+  },
   pushAccessRule: async function(trx, inheritance_id, action, unit, unit_id, is_allow, source, source_id) {
     const maxccnt = await trx('access_rules').max('orderno as maxorderno').where({ inheritance_id, action }).first();
     let orderno = 1;
