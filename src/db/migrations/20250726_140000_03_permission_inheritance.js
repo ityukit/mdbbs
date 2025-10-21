@@ -5,7 +5,6 @@ export function up(knex) {
     table.text('name');
     table.bigInteger('parent_id').notNullable();
 
-    table.unique(['parent_id']);
     table.unique(['name']);
     table.index(['id','parent_id']);
   });
