@@ -3,7 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import database from '../../../database.js';
 import init from '../../../init.js';
 import utils from '../../../lib/utils.js';
-import permissions from '../../../lib/permissions.js';
+import access from '../../../lib/access.js';
 
 const settings = init.getSettings();
 
@@ -21,13 +21,13 @@ async function add_tree(name, description, parent, firstSortKey, secondSortKey, 
     }
     parentId = chk1[0].id;
   }
-  // check permission(parentId)
-  if (!await permissions.isAllowed(tx, 
-                                   req.session.user.id,
-                                   'tree.create',
-                                   permissions.TARGET_TREE,
-                                   parentId,
-                                   {})) {
+  // check access(parentId)
+  if (!await access.isAllowed(tx, 
+                              req.session.user.id,
+                              'tree.create',
+                              access.TARGET_TREE,
+                              parentId,
+                              {})) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   // dir's name
@@ -68,11 +68,11 @@ async function add_tree(name, description, parent, firstSortKey, secondSortKey, 
   await tx('dirtree').insert({ parent_id: parentId, child_id: dir_id[0].id });
   // OK!
   // permition set
-  await permissions.createResource(
+  await access.createResource(
     tx,
-    permissions.TARGET_TREE,
+    access.TARGET_TREE,
     dir_id[0].id,
-    permissions.TARGET_TREE,
+    access.TARGET_TREE,
     parentId,
     true,
     false

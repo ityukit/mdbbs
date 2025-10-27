@@ -1,7 +1,7 @@
 export function up(knex) {
-  return knex.schema.createTable('permissions', function createTable(table) {
+  return knex.schema.createTable('actions', function createTable(table) {
     table.bigIncrements('id').primary();
-    table.text('permission_id').notNullable().unique();
+    table.text('action_name').notNullable().unique();
     table.text('display_name').notNullable();
     table.text('description');
 
@@ -13,5 +13,5 @@ export function up(knex) {
 }
 
 export function down(knex) {
-  return knex.schema.dropTable('permissions');
+  return knex.schema.dropTable('actions');
 }

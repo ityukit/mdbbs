@@ -1,5 +1,5 @@
 export function up(knex) {
-  return knex.schema.createTable('permission_inheritance', function createTable(table) {
+  return knex.schema.createTable('contexts', function createTable(table) {
     table.bigIncrements('id').primary();
     
     table.text('name');
@@ -11,5 +11,5 @@ export function up(knex) {
 }
 
 export function down(knex) {
-  return knex.schema.dropTable('permission_inheritance');
+  return knex.schema.dropTable('contexts');
 }

@@ -4,10 +4,8 @@ export function up(knex) {
     
     table.bigInteger('target').notNullable();
     table.bigInteger('target_id').notNullable();
-    table.bigInteger('inheritance_id').notNullable();
 
     table.unique(['target', 'target_id']);
-    table.index(['inheritance_id']);
   });
 }
 

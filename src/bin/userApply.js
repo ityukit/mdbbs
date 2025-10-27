@@ -1,6 +1,6 @@
 import database from '../database.js';
 import pHash from '../lib/phash.js';
-import permissions from '../lib/permissions.js';
+import access from '../lib/access.js';
 
 import init from '../init.js';
 const settings = init.getSettings();
@@ -45,12 +45,12 @@ const {
 
 if (!values.id) {
     console.error("Error: User ID is required.");
-    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword] [--tier <tier>]");
+    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword] [--tier <tier>,...]");
     console.error("  --id or -i: User ID (required)");
     console.error("  --name or -n: Display name (optional)");
     console.error("  --password or -p: Password (optional)");
     console.error("  --clearPassword or -c: Clear password (optional)");
-    console.error("  --tier or -t: Default tier (optional) default: owner");
+    console.error("  --tier or -t: set tier (optional) default: owner");
     console.error('Example: npm run userApply -- --id adm --name "AdminUser" --password "securepassword"');
     process.exit(1);
 }
@@ -100,15 +100,25 @@ await database.transaction(async (trx) => {
       }
     }
     if (values.tier) {
-      const tierid = await permissions.getTierIdByName(trx, values.tier);
-      if(!tierid){
-        throw new Error(`Tier not found: ${values.tier}`);
+      // delete all tiers in context 1
+      const userTiers = await access.getTierIdsByUser(trx, id, 1);
+      for(const ut of userTiers){
+        const tn = await access.getTierNameById(trx, ut);
+        await access.removeTier_User(trx, id, ut, 1);
+        console.log(`User removed from tier ${tn}(id:${ut}) (context 1)`);
       }
-      if (!await permissions.checkUserInTier(trx, id, tierid)){
-        await permissions.addTier_User(trx, id, tierid);
-        console.log(`User added to tier ${values.tier}`);
-      }else{
-        console.log(`User already in tier ${values.tier}`);
+      // add tiers
+      for(const tierName of values.tier.split(',')){
+        const tierid = await access.getTierIdByName(trx, tierName);
+        if(!tierid){
+          throw new Error(`Tier not found: ${tierName}`);
+        }
+        if (!await access.checkUserInTier(trx, id, tierid,1)){
+          await access.addTier_User(trx, id, tierid, 1);
+          console.log(`User added to tier ${tierName} (context 1)`);
+        }else{
+          console.log(`User already in tier ${tierName} (context 1)`);
+        }
       }
     }
     await trx.commit();

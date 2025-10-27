@@ -1,51 +1,51 @@
 async function insert(    trx, name, action, is_allow) {
   const tierid = await trx.select('id').from('tiers').where('name',name).first();
-  const actionid = await trx.select('id').from('permissions').where('permission_id',action).first();
+  const actionid = await trx.select('id').from('actions').where('action_name',action).first();
   if(tierid && actionid){
-    const c = await trx.select('id').from('tier_permission_template').where({tier_id:tierid.id, action:actionid.id}).first();
+    const c = await trx.select('id').from('tier_rules').where({tier_id:tierid.id, action_id:actionid.id}).first();
     if(!c){
-      console.log(`Inserting tier_permission_template ${name} ${action} ${is_allow}`);
-      await trx('tier_permission_template').insert(    {
+      console.log(`Inserting tier_rules ${name} ${action} ${is_allow}`);
+      await trx('tier_rules').insert(    {
         tier_id: tierid.id,
-        action: actionid.id,
+        action_id: actionid.id,
         is_allow: is_allow,
       });
     }else{
-      throw new Error(`tier_permission_template already exists ${name} ${action}`);
+      throw new Error(`tier_rules already exists ${name} ${action}`);
     }
   }else{
     throw new Error(`insert: tier or action not found ${name} ${action}`);
   }
 }
 async function insertSelf(trx, action, is_allow) {
-  const actionid = await trx.select('id').from('permissions').where('permission_id',action).first();
+  const actionid = await trx.select('id').from('actions').where('action_name',action).first();
   if(actionid){
-    const c = await trx.select('id').from('user_self_permission').where({ action:actionid.id}).first();
+    const c = await trx.select('id').from('user_self_rules').where({ action_id:actionid.id}).first();
     if(!c){
-      console.log(`Inserting user_self_permission ${action} ${is_allow}`);
-      await trx('user_self_permission').insert({
-        action: actionid.id,
+      console.log(`Inserting user_self_rules ${action} ${is_allow}`);
+      await trx('user_self_rules').insert({
+        action_id: actionid.id,
         is_allow: is_allow,
       });
     }else{
-      throw new Error(`user_self_permission already exists ${action}`);
+      throw new Error(`user_self_rules already exists ${action}`);
     }
   }else{
     throw new Error(`insertSelf: action not found ${action}`);
   }
 }
 async function insertSGrp(trx, action, is_allow){
-  const actionid = await trx.select('id').from('permissions').where('permission_id',action).first();
+  const actionid = await trx.select('id').from('actions').where('action_name',action).first();
   if(actionid){
-    const c = await trx.select('id').from('group_self_permission').where({ action:actionid.id}).first();
+    const c = await trx.select('id').from('group_self_rules').where({ action_id:actionid.id}).first();
     if(!c){
-      console.log(`Inserting group_self_permission ${action} ${is_allow}`);
-      await trx('group_self_permission').insert({
-        action: actionid.id,
+      console.log(`Inserting group_self_rules ${action} ${is_allow}`);
+      await trx('group_self_rules').insert({
+        action_id: actionid.id,
         is_allow: is_allow,
       });
     }else{
-      throw new Error(`group_self_permission already exists ${action}`);
+      throw new Error(`group_self_rules already exists ${action}`);
     }
   }else{
     throw new Error(`insertSGrp: action not found ${action}`);
@@ -56,9 +56,9 @@ export function seed(knex) {
   return knex.transaction(async (trx)=>{
     // DELETE ALL
     // 順序が狂うと意味が変わるのでいったん全部消す
-    await trx('tier_permission_template').del();
-    await trx('user_self_permission').del();
-    await trx('group_self_permission').del();
+    await trx('tier_rules').del();
+    await trx('user_self_rules').del();
+    await trx('group_self_rules').del();
     // INSERT ALL
     await insert(    trx, 'guest',     'tree.list', true);
     await insert(    trx, 'user',      'tree.list', true);
