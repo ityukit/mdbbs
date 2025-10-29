@@ -153,8 +153,8 @@ export default {
     return allowed; // can be true, false, null
   },
 
-  isAllowed: function(trx, userid, action_name, target, target_id, selfObject) {
-    return this.isMultipleAllowed(trx, userid, [action_name], target, target_id, selfObject);
+  isAllowed: async function(trx, userid, action_name, target, target_id, selfObject) {
+    return (await this.isMultipleAllowed(trx, userid, [action_name], target, target_id, selfObject))[action_name];
   },
 
   isMultipleAllowed: async function(trx, userid, action_names, target, target_id, selfObject) {
