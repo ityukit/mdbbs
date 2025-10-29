@@ -231,8 +231,8 @@ export default {
                                       this.where('unit', this.UNIT_GROUP).andWhereIn('unit_id', group_ids);
                                     }.bind(this));
                                   }
-                                  if (Object.keys(tier_ids).length > 0) {
-                                    this.orWhere(async function() {
+                                  if (tier_ids[cid] && tier_ids[cid].length > 0) {
+                                    this.orWhere(function() {
                                       this.where('unit', this.UNIT_TIER).andWhereIn('unit_id', tier_ids[cid]);
                                     }.bind(this));
                                   }
