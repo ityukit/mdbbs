@@ -1,6 +1,7 @@
 import cache from "../cache.js";
 import utils from "./utils.js";
 import cacheUser from './cacheUser.js';
+import { all } from "axios";
 
 function retAllowed(val) {
   if (val === true) return true;
@@ -34,7 +35,8 @@ export default {
   usermapping: async function(current_userid, userid, target, target_id, trx) {
     const user = await cacheUser.getUserById(userid, trx);
     if (!user) return null;
-    if (!this.isAllowed(trx, current_userid, 'user.get', target, target_id)) return {};
+    const multipleAllowed = this.isMultipleAllowed(trx, current_userid, ['user.get', 'user.get_sensitive','user.getDetails','user.getwithstatus_visible','user.getwithstatus_enable','user.getwithstatus_lock'], target, target_id);
+    if (!multipleAllowed['user.get']) return {};
     const ret = {
       id: user.id,
       // login_id: user.login_id,
@@ -44,10 +46,10 @@ export default {
       created_at: user.created_at,
       created_at_str: settings.datetool.format(new Date(user.created_at)),
     };
-    if (this.isAllowed(trx, current_userid, 'user.get_sensitive', target, target_id)) {
+    if (multipleAllowed['user.get_sensitive']) {
       ret.login_id = user.login_id;
     }
-    if (this.isAllowed(trx, current_userid, 'user.getDetails', target, target_id)){
+    if (multipleAllowed['user.getDetails']){
       ret.email = user.email;
       ret.description = user.description;
       ret.activated = user.activated;
@@ -55,13 +57,13 @@ export default {
       ret.updated_at = user.updated_at;
       ret.updated_at_str = settings.datetool.format(new Date(user.updated_at));
     }
-    if (this.isAllowed(trx, current_userid, 'user.getwithstatus_visible', target, target_id)){
+    if (multipleAllowed['user.getwithstatus_visible']){
       ret.visibled = user.visibled;
     }
-    if (this.isAllowed(trx, current_userid, 'user.getwithstatus_enable', target, target_id)){
+    if (multipleAllowed['user.getwithstatus_enable']){
       ret.enabled = user.enabled;
     }
-    if (this.isAllowed(trx, current_userid, 'user.getwithstatus_lock', target, target_id)){
+    if (multipleAllowed['user.getwithstatus_lock']){
       ret.locked = user.locked;
     }
     return ret;
@@ -69,28 +71,29 @@ export default {
   groupmapping: async function(current_userid, groupid, target, target_id, trx) {
     const group = await trx('groups').select('*').where({ id: groupid }).first();
     if (!group) return null;
-    if (!this.isAllowed(trx, current_userid, 'group.get', target, target_id)) return {};
+    const multipleAllowed = this.isMultipleAllowed(trx, current_userid, ['group.get', 'group.getSensitive','group.getDetails','group.getwithstatus_visible','group.getwithstatus_enable','group.getwithstatus_lock'], target, target_id);
+    if (!multipleAllowed['group.get']) return {};
     const ret = {
       id: group.id,
       name: group.name,
       created_at: group.created_at,
       created_at_str: settings.datetool.format(new Date(group.created_at)),
     };
-    if (this.isAllowed(trx, current_userid, 'group.getDetails', target, target_id)){
+    if (multipleAllowed['group.getDetails']){
       ret.description = group.description;
       ret.updated_at = group.updated_at;
       ret.updated_at_str = settings.datetool.format(new Date(group.updated_at));
     }
-    if (this.isAllowed(trx, current_userid, 'group.getwithstatus_visible', target, target_id)){
+    if (multipleAllowed['group.getwithstatus_visible']){
       ret.visibled = group.visibled;
     }
-    if (this.isAllowed(trx, current_userid, 'group.getwithstatus_enable', target, target_id)){
+    if (multipleAllowed['group.getwithstatus_enable']){
       ret.enabled = group.enabled;
     }
-    if (this.isAllowed(trx, current_userid, 'group.getwithstatus_lock', target, target_id)){
+    if (multipleAllowed['group.getwithstatus_lock']){
       ret.locked = group.locked;
     }
-    if (this.isAllowed(trx, current_userid, 'group.getSensitive', target, target_id)) {
+    if (multipleAllowed['group.getSensitive']) {
       // get users
       const rows = await trx('map_usergroup').select('user_id').where({ group_id: group.id });
       ret.user_count = rows.length;
@@ -107,20 +110,11 @@ export default {
     let allowed = null;
     // check user_self_rules
     if (allowed === null && selfObject.userids.indexOf(userid) >= 0){
-      let cAllowed = await cache.hget(`rules:user_self_rules`, actionid);
-      if (cAllowed === undefined || cAllowed === null) {
-        const row = await trx('user_self_rules').select('is_allow').where({ action_id: actionid }).first();
-        if (row) {
-          allowed = row.is_allow;
-        }
-        await cache.hset(`rules:user_self_rules`, actionid, JSON.stringify(allowed));
-      }else{
-        cAllowed = JSON.parse(cAllowed);
-        if (cAllowed === true || cAllowed === false) {
-          allowed = cAllowed;
-        }
+      const row = await trx('user_self_rules').select('is_allow').where({ action_id: actionid }).first();
+      if (row) {
+        allowed = row.is_allow;
       }
-    }
+  }
     // check group_self_permission
     if (allowed === null && selfObject.groupids && selfObject.groupids.length > 0) {
       // get groups for user
@@ -133,18 +127,9 @@ export default {
         }
       }
       if (inGroup){
-        let cAllowed = await cache.hget(`rules:group_self_rules`, actionid);
-        if (cAllowed === undefined || cAllowed === null) {
-          const row = await trx('group_self_rules').select('is_allow').whereIn('action_id', actionid).first();
-          if (row) {
-            allowed = row.is_allow;
-          }
-          await cache.hset(`rules:group_self_rules`, actionid, JSON.stringify(allowed));
-        }else{
-          cAllowed = JSON.parse(cAllowed);
-          if (cAllowed === true || cAllowed === false) {
-            allowed = cAllowed;
-          }
+        const row = await trx('group_self_rules').select('is_allow').whereIn('action_id', actionid).first();
+        if (row) {
+          allowed = row.is_allow;
         }
       }
     }
@@ -160,43 +145,24 @@ export default {
         }
       }
       if (inTier){
-        let cAllowed = await cache.hget(`rules:tier_self_rules`, actionid);
-        if (cAllowed === undefined || cAllowed === null) {
-          const row = await trx('tier_self_rules').select('is_allow').whereIn('action_id', actionid).first();
-          if (row) {
-            allowed = row.is_allow;
-          }
-          await cache.hset(`rules:tier_self_rules`, actionid, JSON.stringify(allowed));
-        }else{
-          cAllowed = JSON.parse(cAllowed);
-          if (cAllowed === true || cAllowed === false) {
-            allowed = cAllowed;
-          }
+        const row = await trx('tier_self_rules').select('is_allow').whereIn('action_id', actionid).first();
+        if (row) {
+          allowed = row.is_allow;
         }
       }
     }
     return allowed; // can be true, false, null
   },
 
-  isAllowed: async function(trx, userid, action_name, target, target_id, selfObject) {
+  isAllowed: function(trx, userid, action_name, target, target_id, selfObject) {
+    return this.isMultipleAllowed(trx, userid, [action_name], target, target_id, selfObject);
+  },
+
+  isMultipleAllowed: async function(trx, userid, action_names, target, target_id, selfObject) {
     const pkey = `rules:isAllowed:${target}:${target_id}`;
-    const skey = `${userid}:${action_name}`;
+    const skey = `${userid}:${action_names.join(',')}`;
     let allowed = await cache.hget(pkey, skey);
     if (allowed === undefined || allowed === null) {
-      // not in cache, check db
-      let actionid = await cache.hget(`rules:actionid`, action_name);
-      if (actionid === undefined || actionid === null) {
-        const row = await trx('actions').select('id').where({ action_name: action_name }).first();
-        if (!row) {
-          // no such action, so no permissions
-          await cache.hset(pkey, skey, 'false');
-          return retAllowed(false);
-        }
-        actionid = row.id;
-        await cache.hset(`rules:actionid`, action_name, actionid.toString());
-      } else {
-        actionid = utils.parseSafeInt(actionid);
-      }
       // check resources
       const resource_id = await this.getResourceIdByTarget(trx, target, target_id);
       // get context_ids
@@ -215,76 +181,106 @@ export default {
       }
       //let tier_ids = await this.getTierIdsByUser(trx, userid, context_ids); // ensure cache
       // now we have inheritance_id, user_id, group_ids, tier_ids, group_tier_ids
-      // check access_rules
-      allowed = null;
-      let current_context_ids = context_ids.slice(); // clone
-      while(allowed === null && (current_context_ids !== null && current_context_ids.length > 0)) {
-        let found = null;
-        for (const cid of current_context_ids) {
-          const rows = await trx.select('is_allow')
-                                .from('access_rules')
-                                .where({ action_id: actionid, context_id: cid })
-                                .andWhere(function() {
-                                  this.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
-                                  if (group_ids.length > 0) {
-                                    this.orWhere(function() {
-                                      this.where('unit', this.UNIT_GROUP).andWhereIn('unit_id', group_ids);
-                                    }.bind(this));
-                                  }
-                                  if (tier_ids[cid] && tier_ids[cid].length > 0) {
-                                    this.orWhere(function() {
-                                      this.where('unit', this.UNIT_TIER).andWhereIn('unit_id', tier_ids[cid]);
-                                    }.bind(this));
-                                  }
-                                  this.orWhere(function() {
-                                    this.where('unit', this.UNIT_ALL);
-                                  }.bind(this));
-                                }.bind(this))
-                                .orderBy('orderno', 'asc')
-                                .limit(1);
-          if (rows.length > 0) {
-            if (rows[0].is_allow) {
-              found = rows[0].is_allow;
-            }else{
-              // deny found, stop searching
-              found = false;
-              break;
+      // check each action_name
+      const result = {};
+      const actionids = {};
+      for (const action_name of action_names) {
+        const sskey = `${userid}:${action_name}`;
+        let allowed = await cache.hget(pkey, sskey);
+        if (allowed !== undefined && allowed !== null) {
+          result[action_name] = retAllowed(allowed);
+        }else{
+          let actionid = await cache.hget(`rules:actionid`, action_name);
+          if (actionid === undefined || actionid === null) {
+            const row = await trx('actions').select('id').where({ action_name: action_name }).first();
+            if (!row) {
+              // no such action, so no permissions
+              allowed = false;
+              result[action_name] = false;
+              continue;
+            }
+            actionid = row.id;
+            await cache.hset(`rules:actionid`, action_name, actionid.toString());
+          } else {
+            actionid = utils.parseSafeInt(actionid);
+          }
+          actionids[action_name] = actionid;
+          // check access_rules
+          allowed = null;
+          let current_context_ids = context_ids.slice(); // clone
+          while(allowed === null && (current_context_ids !== null && current_context_ids.length > 0)) {
+            let found = null;
+            for (const cid of current_context_ids) {
+              const rows = await trx.select('is_allow')
+                                    .from('access_rules')
+                                    .where({ action_id: actionid, context_id: cid })
+                                    .andWhere(function() {
+                                      this.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
+                                      if (group_ids.length > 0) {
+                                        this.orWhere(function() {
+                                          this.where('unit', this.UNIT_GROUP).andWhereIn('unit_id', group_ids);
+                                        }.bind(this));
+                                      }
+                                      if (tier_ids[cid] && tier_ids[cid].length > 0) {
+                                        this.orWhere(function() {
+                                          this.where('unit', this.UNIT_TIER).andWhereIn('unit_id', tier_ids[cid]);
+                                        }.bind(this));
+                                      }
+                                      this.orWhere(function() {
+                                        this.where('unit', this.UNIT_ALL);
+                                      }.bind(this));
+                                    }.bind(this))
+                                    .orderBy('orderno', 'asc')
+                                    .limit(1);
+              if (rows.length > 0) {
+                if (rows[0].is_allow) {
+                  found = rows[0].is_allow;
+                }else{
+                  // deny found, stop searching
+                  found = false;
+                  break;
+                }
+              }
+            }
+            if (found === null) {
+              const next_ids = [];
+              for (const cid of current_context_ids){
+                const parent_id = await this.getParentContextId(trx, cid);
+                if (parent_id){
+                  if (parent_id === -1){
+                    // reached root
+                    // DO NOTHING
+                  } else if (parent_id === -2){
+                    // 明確に拒否する
+                    allowed = false;
+                    await cache.hset(pkey, sskey, 'false');
+                    result[action_name] = false;
+                    break;
+                  }
+                  if (parent_id > 0 && next_ids.indexOf(parent_id) < 0){
+                    next_ids.push(parent_id);
+                  }
+                }
+              }
+              current_context_ids = next_ids;
+            } else {
+              allowed = found;
             }
           }
-        }
-        if (found === null) {
-          const next_ids = [];
-          for (const cid of current_context_ids){
-            const parent_id = await this.getParentContextId(trx, cid);
-            if (parent_id){
-              if (parent_id === -1){
-                // reached root
-                // DO NOTHING
-              } else if (parent_id === -2){
-                // 明確に拒否する
-                await cache.hset(pkey, skey, 'false');
-                return retAllowed(false);
-              }
-              if (parent_id > 0 && next_ids.indexOf(parent_id) < 0){
-                next_ids.push(parent_id);
-              }
-            }
+          if (allowed === null) {
+            // self permission only
+            allowed = await this.isAllowedSelf(trx, userid, actionid,context_ids,selfObject);
           }
-          current_context_ids = next_ids;
-        } else {
-          allowed = found;
+          if (allowed === null) allowed = false; // default deny
+          if (allowed) {
+            await cache.hset(pkey, sskey, allowed.toString());
+          }
         }
-      }
-      if (allowed === null) {
-        // self permission only
-        allowed = await this.isAllowedSelf(trx, userid, actionid,context_ids,selfObject);
-      }
-      if (allowed === null) allowed = false; // default deny
-      if (allowed) {
-        await cache.hset(pkey, skey, allowed.toString());
+        result[action_name] = retAllowed(allowed);
       }
     }
-    return retAllowed(allowed);
+    await cache.hset(pkey, skey, JSON.stringify(result));
+    return result;
   },
 
   createNewContextOnce: async function(trx, parent_id, name, addRules, force_insert_id) {
@@ -650,10 +646,16 @@ export default {
   addGroup: async function(trx, userid, groupid) {
     await trx('map_usergroup').insert({ user_id: userid, group_id: groupid });
     await cache.del(`rules:usergroups:${userid}`);
+    await cache.del(`rules:usertiers:${userid}`);
+    await cache.del(`rules:onlyusertiers:${userid}`);
+    await cache.del(`rules:isAllowed:${userid}`);
   },
   removeGroup: async function(trx, userid, groupid) {
     await trx('map_usergroup').where({ user_id: userid, group_id: groupid }).del();
     await cache.del(`rules:usergroups:${userid}`);
+    await cache.del(`rules:usertiers:${userid}`);
+    await cache.del(`rules:onlyusertiers:${userid}`);
+    await cache.del(`rules:isAllowed:${userid}`);
   },
   getTierNameById: async function(trx, tierid) {
     let tier_name = await cache.hget(`rules:tiers:id:${tierid}`, 'name');
