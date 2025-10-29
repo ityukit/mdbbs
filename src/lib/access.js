@@ -1,7 +1,6 @@
 import cache from "../cache.js";
 import utils from "./utils.js";
 import cacheUser from './cacheUser.js';
-import { all } from "axios";
 
 function retAllowed(val) {
   if (val === true) return true;
@@ -369,12 +368,20 @@ export default {
       resource_id,
       context_id,
     });
+    const res = await trx('resources').select('target','target_id').where({ id: resource_id }).first();
+     if (res) {
+       await cache.del(`rules:isAllowed:${res.target}:${res.target_id}`);
+     }
   },
   deleteResourceFromContext: async function(trx, resource_id, context_id) {
     await trx('map_resource_context').where({
       resource_id,
       context_id
     }).del();
+    const res = await trx('resources').select('target','target_id').where({ id: resource_id }).first();
+     if (res) {
+       await cache.del(`rules:isAllowed:${res.target}:${res.target_id}`);
+     }
   },
 
   createResource: async function(trx, target, target_id, parent_target, parent_target_id, isCreateContext, isCreatContextCopyRules) {
@@ -435,9 +442,14 @@ export default {
     await trx('resources').where({ target, target_id }).del();
     await trx('map_resource_context').where({ resource_id }).del();
     // check if any other resources use the same context_ids
+    const stillUsedContexts = new Set(
+      (await trx('map_resource_context')
+        .distinct('context_id')
+        .whereIn('context_id', context_ids))
+        .map(row => row.context_id)
+    );
     for(const context_id of context_ids){
-      const ores = await trx('map_resource_context').select('id').where({ context_id }).limit(1).first();
-      if (!ores) {
+      if (!stillUsedContexts.has(context_id)) {
         // no other resources use this context_id, so delete it
         await trx('contexts').where({ id: context_id }).del();
         // access_rules delete
