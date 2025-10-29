@@ -202,46 +202,77 @@ export default {
       // get context_ids
       const context_ids = await this.getContextIdsByResourceId(trx, resource_id);
       // get groups for user
-      let group_ids = await this.getGroupIdsByUser(trx, userid, context_ids); // ensure cache
+      let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
       // get tier for user
-      let tier_ids = await this.getTierIdsByUser(trx, userid, context_ids); // ensure cache
+      let tier_ids = {};
+      for(const cid of context_ids){
+        tier_ids[cid] = await this.getTierIdsByUserOnlyOneContext(trx, userid, cid); // ensure cache
+        if (tier_ids[cid] < 0) {
+          // 明確に拒否する
+          await cache.hset(pkey, skey, 'false');
+          return retAllowed(false);
+        }
+      }
+      //let tier_ids = await this.getTierIdsByUser(trx, userid, context_ids); // ensure cache
       // now we have inheritance_id, user_id, group_ids, tier_ids, group_tier_ids
       // check access_rules
       allowed = null;
       let current_context_ids = context_ids.slice(); // clone
       while(allowed === null && (current_context_ids !== null && current_context_ids.length > 0)) {
-        const rows = await trx.select('is_allow')
-          .from('access_rules')
-          .where('action_id', actionid)
-          .andWhereIn('context_id', current_context_ids)
-          .andWhere(function() {
-            this.where(function() {
-              this.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
-            }).orWhere(function() {
-              if (group_ids.length > 0) {
-                this.where('unit', this.UNIT_GROUP).andWhereIn('unit_id', group_ids);
-              }
-            }).orWhere(function() {
-              if (tier_ids.length > 0) {
-                this.where('unit', this.UNIT_TIER).andWhereIn('unit_id', tier_ids);
-              }
-            }).orWhere(function() {
-              this.where('unit', this.UNIT_ALL);
-            });
-          }.bind(this))
-          .orderBy('orderno', 'asc')
-          .limit(1);
-        if (rows.length === 0) {
+        let found = null;
+        for (const cid of current_context_ids) {
+          const rows = await trx.select('is_allow')
+                                .from('access_rules')
+                                .where({ action_id: actionid, context_id: cid })
+                                .andWhere(function() {
+                                  this.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
+                                  if (group_ids.length > 0) {
+                                    this.orWhere(function() {
+                                      this.where('unit', this.UNIT_GROUP).andWhereIn('unit_id', group_ids);
+                                    }.bind(this));
+                                  }
+                                  if (Object.keys(tier_ids).length > 0) {
+                                    this.orWhere(async function() {
+                                      this.where('unit', this.UNIT_TIER).andWhereIn('unit_id', tier_ids[cid]);
+                                    }.bind(this));
+                                  }
+                                  this.orWhere(function() {
+                                    this.where('unit', this.UNIT_ALL);
+                                  }.bind(this));
+                                }.bind(this))
+                                .orderBy('orderno', 'asc')
+                                .limit(1);
+          if (rows.length > 0) {
+            if (rows[0].is_allow) {
+              found = rows[0].is_allow;
+            }else{
+              // deny found, stop searching
+              found = false;
+              break;
+            }
+          }
+        }
+        if (found === null) {
           const next_ids = [];
           for (const cid of current_context_ids){
             const parent_id = await this.getParentContextId(trx, cid);
-            if (parent_id && parent_id > 0 && next_ids.indexOf(parent_id) < 0){
-              next_ids.push(parent_id);
+            if (parent_id){
+              if (parent_id === -1){
+                // reached root
+                // DO NOTHING
+              } else if (parent_id === -2){
+                // 明確に拒否する
+                await cache.hset(pkey, skey, 'false');
+                return retAllowed(false);
+              }
+              if (parent_id > 0 && next_ids.indexOf(parent_id) < 0){
+                next_ids.push(parent_id);
+              }
             }
           }
           current_context_ids = next_ids;
         } else {
-          allowed = rows[0].is_allow;
+          allowed = found;
         }
       }
       if (allowed === null) {
