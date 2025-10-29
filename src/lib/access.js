@@ -277,7 +277,7 @@ export default {
       }
       if (allowed === null) {
         // self permission only
-        allowed = await this.isAllowedSelf(trx, userid, actionid,selfObject);
+        allowed = await this.isAllowedSelf(trx, userid, actionid,context_ids,selfObject);
       }
       if (allowed === null) allowed = false; // default deny
       if (allowed) {
@@ -313,10 +313,10 @@ export default {
     if (addRules === true){
       // copy rule to access_rules
       // from user_rules
+      const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
+      let orderno = 1;
+      if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
       for (const row of await trx('user_rules').select('*').orderBy('id','asc')) {
-        let orderno = 1;
-        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
-        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
         await trx('access_rules').insert({
           context_id: id,
           action_id: row.action_id,
@@ -327,12 +327,10 @@ export default {
           source: this.SOURCE_USER_RULES,
           source_id: row.id,
         });
+        orderno += 1;
       }
       // from group_rules
       for (const row of await trx('group_rules').select('*').orderBy('id','asc')) {
-        let orderno = 1;
-        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
-        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
         await trx('access_rules').insert({
           context_id: id,
           action_id: row.action_id,
@@ -343,12 +341,10 @@ export default {
           source: this.SOURCE_GROUP_RULES,
           source_id: row.id,
         });
+        orderno += 1;
       }
       // from tier_rules
       for (const row of await trx('tier_rules').select('*').orderBy('id','asc')) {
-        let orderno = 1;
-        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
-        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
         await trx('access_rules').insert({
           context_id: id,
           action_id: row.action_id,
@@ -359,6 +355,7 @@ export default {
           source: this.SOURCE_TIER_RULES,
           source_id: row.id,
         });
+        orderno += 1;
       }
     }
     return id;
@@ -789,8 +786,12 @@ export default {
       await cache.del(`rules:usertiers:${row.user_id}`);
       await cache.del(`rules:onlyusertiers:${row.user_id}`);
     }
-    await cache.del(`rules:onlygroptiers:${groupid}`);
-    await cache.del(`rules:groptiers:${groupid}`);
+    await cache.del(`rules:onlygrouptiers:${groupid}`);
+    await cache.del(`rules:grouptiers:${groupid}`);
+    await cache.run(async (wclient)=>{
+      const keys = await wclient.keys('rules:onlygroupstiers:*');
+      return await this.client.del(keys);
+    });
   },
   removeTier_Group: async function(trx, groupid, tierid, context_id) {
     await trx('map_grouptier').where({ group_id: groupid, tier_id: tierid, context_id: context_id }).del();
@@ -799,7 +800,11 @@ export default {
       await cache.del(`rules:usertiers:${row.user_id}`);
       await cache.del(`rules:onlyusertiers:${row.user_id}`);
     }
-    await cache.del(`rules:onlygroptiers:${groupid}`);
-    await cache.del(`rules:groptiers:${groupid}`);
+    await cache.del(`rules:onlygrouptiers:${groupid}`);
+    await cache.del(`rules:grouptiers:${groupid}`);
+    await cache.run(async (wclient)=>{
+      const keys = await wclient.keys('rules:onlygroupstiers:*');
+      return await this.client.del(keys);
+    });
   },
 };
