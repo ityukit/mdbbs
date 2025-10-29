@@ -103,7 +103,7 @@ export default {
     return ret;
   },
 
-  isAllowedSelf: async function(trx, userid, actionid,selfObject) {
+  isAllowedSelf: async function(trx, userid, actionid, context_ids, selfObject) {
     let allowed = null;
     // check user_self_rules
     if (allowed === null && selfObject.userids.indexOf(userid) >= 0){
@@ -124,7 +124,7 @@ export default {
     // check group_self_permission
     if (allowed === null && selfObject.groupids && selfObject.groupids.length > 0) {
       // get groups for user
-      let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
+      let group_ids = await this.getGroupIdsByUser(trx, userid, context_ids); // ensure cache
       let inGroup = false;
       for(const gid of group_ids){
         if (selfObject.groupids.indexOf(gid) >= 0) {
@@ -151,7 +151,7 @@ export default {
     // check tier_self_permission
     if (allowed === null && selfObject.tierids && selfObject.tierids.length > 0) {
       // get tiers for user + groups
-      let tier_ids = await this.getTierIdsByUser(trx, userid); // ensure cache
+      let tier_ids = await this.getTierIdsByUser(trx, userid, context_ids); // ensure cache
       let inTier = false;
       for(const tid of tier_ids){
         if (selfObject.tierids.indexOf(tid) >= 0) {
@@ -202,9 +202,9 @@ export default {
       // get context_ids
       const context_ids = await this.getContextIdsByResourceId(trx, resource_id);
       // get groups for user
-      let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
+      let group_ids = await this.getGroupIdsByUser(trx, userid, context_ids); // ensure cache
       // get tier for user
-      let tier_ids = await this.getTierIdsByUser(trx, userid); // ensure cache
+      let tier_ids = await this.getTierIdsByUser(trx, userid, context_ids); // ensure cache
       // now we have inheritance_id, user_id, group_ids, tier_ids, group_tier_ids
       // check access_rules
       allowed = null;
@@ -652,7 +652,7 @@ export default {
     }
     return tier_id;
   },
-  getTierIdsByUserOnly: async function(trx, userid, context_id) {
+  getTierIdsByUserOnlyOneContext: async function(trx, userid, context_id) {    
     let tier_ids = await cache.hget(`rules:onlyusertiers:${userid}`, context_id.toString() );
     if (tier_ids !== undefined && tier_ids !== null) {
       return JSON.parse(tier_ids);
@@ -663,52 +663,78 @@ export default {
     await cache.hset(`rules:onlyusertiers:${userid}`, context_id.toString(), JSON.stringify(tier_ids));
     return tier_ids;
   },
-  getTierIdsByGroup: async function(trx, groupid, context_id) {
-    let tier_ids = await cache.hget(`rules:onlygroptiers:${groupid}`, context_id.toString());
+  getTierIdsByUserOnly: async function(trx, userid, context_ids) {
+    let all_tier_ids = await cache.hget(`rules:onlyusertiers:${userid}`, context_ids.sort().join(','));
+    if (all_tier_ids !== undefined && all_tier_ids !== null) {
+      return JSON.parse(all_tier_ids);
+    }
+    let tier_ids = [];
+    for(const context_id of context_ids){
+      let tids = await this.getTierIdsByUserOnlyOneContext(trx, userid, context_id); // ensure cache
+      tier_ids = tier_ids.concat(tids);
+    }
+    await cache.hset(`rules:usertiers:${userid}`, context_ids.sort().join(','), JSON.stringify(tier_ids));
+    return tier_ids;
+  },
+  getTierIdsByGroupOneContext: async function(trx, groupid, context_id) {
+    let tier_ids = await cache.hget(`rules:onlygrouptiers:${groupid}`, context_id.toString());
     if (tier_ids !== undefined && tier_ids !== null) {
       return JSON.parse(tier_ids);
     }
     // not in cache, check db
     const rows = await trx('map_grouptier').select('tier_id').where({ group_id: groupid, context_id: context_id });
     tier_ids = rows.map(r => r.tier_id);
-    await cache.hset(`rules:onlygroptiers:${groupid}`, context_id.toString(), JSON.stringify(tier_ids));
+    await cache.hset(`rules:onlygrouptiers:${groupid}`, context_id.toString(), JSON.stringify(tier_ids));
     return tier_ids;
   },
-  getTierIdsByUser: async function(trx, userid, context_id) {
-    let all_tier_ids = await cache.hget(`rules:usertiers:${userid}`, context_id.toString());
+  getTierIdsByGroup: async function(trx, groupid, context_ids) {
+    let all_tier_ids = await cache.hget(`rules:grouptiers:${groupid}`, context_ids.sort().join(','));
+    if (all_tier_ids !== undefined && all_tier_ids !== null) {
+      return JSON.parse(all_tier_ids);
+    }
+    let tier_ids = [];
+    for(const context_id of context_ids){
+      let tids = await this.getTierIdsByGroupOneContext(trx, groupid, context_id); // ensure cache
+      tier_ids = tier_ids.concat(tids);
+    }
+    await cache.hset(`rules:grouptiers:${groupid}`, context_ids.sort().join(','), JSON.stringify(tier_ids));
+    return tier_ids;
+  },
+  getTierIdsByUser: async function(trx, userid, context_ids) {
+    let all_tier_ids = await cache.hget(`rules:usertiers:${userid}`, context_ids.sort().join(','));
     if (all_tier_ids !== undefined && all_tier_ids !== null) {
       return JSON.parse(all_tier_ids);
     }
     // get tier for user
-    let tier_ids = await this.getTierIdsByUserOnly(trx, userid, context_id); // ensure cache
+    let tier_ids = await this.getTierIdsByUserOnly(trx, userid, context_ids); // ensure cache
     // get tier for groups
     let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
     if (group_ids.length > 0) {
       for (const group_id of group_ids) {
-        let tgids = await this.getTierIdsByGroup(trx, group_id, context_id); // ensure cache
+        let tgids = await this.getTierIdsByGroup(trx, group_id, context_ids); // ensure cache
         tier_ids = tier_ids.concat(tgids);
       }
     }
     // unique
     tier_ids = [...new Set(tier_ids)];
-    await cache.hset(`rules:usertiers:${userid}`, context_id.toString(), JSON.stringify(tier_ids));
+    await cache.hset(`rules:usertiers:${userid}`, context_ids.sort().join(','), JSON.stringify(tier_ids));
     return tier_ids;
   },
-  checkUserOnlyInTier: async function(trx, userid, tierid, context_id) {
-    let tier_ids = await this.getTierIdsByUser(trx, userid, context_id); // ensure cache
+  checkUserOnlyInTier: async function(trx, userid, tierid, context_ids) {
+    let tier_ids = await this.getTierIdsByUser(trx, userid, context_ids); // ensure cache
     return tier_ids.indexOf(tierid) >= 0;
   },
-  checkGroupInTier: async function(trx, groupid, tierid, context_id) {
-    let tier_ids = await this.getTierIdsByGroup(trx, groupid, context_id); // ensure cache
+  checkGroupInTier: async function(trx, groupid, tierid, context_ids) {
+    let tier_ids = await this.getTierIdsByGroup(trx, groupid, context_ids); // ensure cache
     return tier_ids.indexOf(tierid) >= 0;
   },
-  checkUserInTier: async function(trx, userid, tierid, context_id) {
-    if (await this.checkUserOnlyInTier(trx, userid, tierid, context_id)) return true;
+  checkUserInTier: async function(trx, userid, tierid, context_ids) {
+    if (await this.checkUserOnlyInTier(trx, userid, tierid, context_ids)) return true;
     // check groups
     const group_ids = await this.getGroupIdsByUser(trx, userid);
     if (group_ids.length === 0) return false;
     for(const gid of group_ids){
-      if (await this.checkGroupInTier(trx, gid, tierid, context_id)) return true;
+      if (await this.checkGroupInTier(trx, gid, tierid, context_ids)) return true;
     }
     return false;
   },
