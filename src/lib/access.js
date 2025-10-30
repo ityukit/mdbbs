@@ -122,7 +122,7 @@ export default {
     // check group_self_permission
     if (allowed === null && selfObject.groupids && selfObject.groupids.length > 0) {
       // get groups for user
-      let group_ids = await this.getFullGroupIdsByUser(trx, userid, context_ids); // ensure cache
+      let group_ids = await this.getFullEnabledGroupIdsByUser(trx, userid, context_ids); // ensure cache
       let inGroup = false;
       for(const gid of group_ids){
         if (await this.isGroupEnabled(trx, gid) === true) {
@@ -822,19 +822,30 @@ export default {
     await cache.hset(`rules:usergroups:${userid}`, 'group_ids', JSON.stringify(group_ids));
     return group_ids;
   },
-  getFullGroupIdsByUser: async function(trx, userid) {
-    let direct_group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
-    let all_group_ids = new Set(direct_group_ids);
-    let queue = [...direct_group_ids];
-    while(queue.length > 0){
-      const gid = queue.shift();
-      const parent_gid = await this.getParentGroupId(trx, gid);
-      if (parent_gid && !all_group_ids.has(parent_gid)){
-        all_group_ids.add(parent_gid);
-        queue.push(parent_gid);
-      }
+  getFullEnabledGroupIdsByUser: async function(trx, userid) {
+    let all_group_ids = await cache.hget(`rules:usergroups:${userid}`, 'all_enabled_group_ids');
+    if (all_group_ids !== undefined && all_group_ids !== null) {
+      all_group_ids = JSON.parse(all_group_ids);
+      return all_group_ids;
     }
-    return Array.from(all_group_ids);
+    // not in cache, compute
+    let direct_group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
+    if (direct_group_ids.length === 0) return [];
+    const all = await trx.withRecursive('all_groups', (qb) => {
+      qb.select('id', 'parent_id', 'enabled')
+        .from('groups')
+        .whereIn('id', direct_group_ids)
+        .unionAll(function() {
+          this.select('g.id', 'g.parent_id', 'g.enabled')
+              .from('groups as g')
+              .join('all_groups as ag', 'g.id', 'ag.parent_id')
+              .where('g.parent_id', '>', 0)
+              .andWhere('g.is_enabled', true);
+        });
+    }).select('distinct id').from('all_groups');
+    all_group_ids = all.map(r => r.id);
+    await cache.hset(`rules:usergroups:${userid}`, 'all_enabled_group_ids', JSON.stringify(all_group_ids));
+    return all_group_ids;
   },
   checkUserInGroup: async function(trx, userid, groupid) {
     let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
