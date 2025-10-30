@@ -29,6 +29,15 @@ class MemoryClientWrapper {
     pattern = pattern.slice(0, -1); // remove the '*' at the end
     return Array.from(this.client.keys()).filter(key => key.startsWith(this.prefix + pattern));
   }
+  async delDirectKeys(keys) {
+    let count = 0;
+    for (const key of keys) {
+      if (this.client.delete(key)) {
+        count++;
+      }
+    }
+    return count;
+  }
   async hgetall(key) {
     return this.client.get(this.prefix + key);
   }

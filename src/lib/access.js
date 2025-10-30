@@ -1,6 +1,8 @@
 import cache from "../cache.js";
 import utils from "./utils.js";
 import cacheUser from './cacheUser.js';
+import { is } from "date-fns/locale";
+import f from "session-file-store";
 
 function retAllowed(val) {
   if (val === true) return true;
@@ -68,7 +70,7 @@ export default {
     return ret;
   },
   groupmapping: async function(current_userid, groupid, target, target_id, trx) {
-    const group = await trx('groups').select('*').where({ id: groupid }).first();
+    const group = await cacheUser.getGroupById(groupid, trx);
     if (!group) return null;
     const multipleAllowed = this.isMultipleAllowed(trx, current_userid, ['group.get', 'group.getSensitive','group.getDetails','group.getwithstatus_visible','group.getwithstatus_enable','group.getwithstatus_lock'], target, target_id);
     if (!multipleAllowed['group.get']) return {};
@@ -108,6 +110,9 @@ export default {
   isAllowedSelf: async function(trx, userid, actionid, context_ids, selfObject) {
     let allowed = null;
     // check user_self_rules
+    if (await this.isUserEnabled(trx, userid) === false) {
+      return false;
+    }
     if (allowed === null && selfObject.userids.indexOf(userid) >= 0){
       const row = await trx('user_self_rules').select('is_allow').where({ action_id: actionid }).first();
       if (row) {
@@ -117,12 +122,14 @@ export default {
     // check group_self_permission
     if (allowed === null && selfObject.groupids && selfObject.groupids.length > 0) {
       // get groups for user
-      let group_ids = await this.getGroupIdsByUser(trx, userid, context_ids); // ensure cache
+      let group_ids = await this.getFullGroupIdsByUser(trx, userid, context_ids); // ensure cache
       let inGroup = false;
       for(const gid of group_ids){
-        if (selfObject.groupids.indexOf(gid) >= 0) {
-          inGroup = true;
-          break;
+        if (await this.isGroupEnabled(trx, gid) === true) {
+          if (selfObject.groupids.indexOf(gid) >= 0) {
+            inGroup = true;
+            break;
+          }
         }
       }
       if (inGroup){
@@ -138,9 +145,11 @@ export default {
       let tier_ids = await this.getTierIdsByUser(trx, userid, context_ids); // ensure cache
       let inTier = false;
       for(const tid of tier_ids){
-        if (selfObject.tierids.indexOf(tid) >= 0) {
-          inTier = true;
-          break;
+        if (await this.isTierEnabled(trx, tid) === true) {
+          if (selfObject.tierids.indexOf(tid) >= 0) {
+            inTier = true;
+            break;
+          }
         }
       }
       if (inTier){
@@ -158,33 +167,51 @@ export default {
   },
 
   isMultipleAllowed: async function(trx, userid, action_names, target, target_id, selfObject) {
-    const pkey = `rules:isAllowed:${target}:${target_id}`;
-    const skey = `${userid}:${action_names.join(',')}`;
+    const pkey = `rules:isAllowed:${target}:${target_id}:${userid}`;
+    const skey = `${action_names.join(',')}`;
     let allowed = await cache.hget(pkey, skey);
+    const result = {};
+    if (await this.isUserEnabled(trx, userid) === false) {
+      const t = {};
+      for (const action_name of action_names) {
+        t[action_name] = false;
+      }
+      allowed = JSON.stringify(t);
+    }
     if (allowed === undefined || allowed === null) {
       // check resources
       const resource_id = await this.getResourceIdByTarget(trx, target, target_id);
       // get context_ids
       const context_ids = await this.getContextIdsByResourceId(trx, resource_id);
       // get groups for user
-      let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
+      const all_group_ids = await this.getFullGroupIdsByUser(trx, userid); // ensure cache
+      let group_ids = [];
+      for(const gid of all_group_ids){
+        if (await this.isGroupEnabled(trx, gid) === true){
+          group_ids.push(gid);
+        }
+      }
       // get tier for user
       let tier_ids = {};
       for(const cid of context_ids){
-        tier_ids[cid] = await this.getTierIdsByUserOnlyOneContext(trx, userid, cid); // ensure cache
-        if (tier_ids[cid] < 0) {
-          // 明確に拒否する
-          await cache.hset(pkey, skey, 'false');
-          return retAllowed(false);
+        const tids = await this.getTierIdsByUserOnlyOneContext(trx, userid, cid); // ensure cache
+        for(const tid of tids){
+          if (tid < 0) {
+            // 明確に拒否する
+            await cache.hset(pkey, skey, 'false');
+            return retAllowed(false);
+          }
+          if (await this.isTierEnabled(trx, tid) === true){
+            tier_ids[cid] = tid;
+          }
         }
       }
       //let tier_ids = await this.getTierIdsByUser(trx, userid, context_ids); // ensure cache
       // now we have inheritance_id, user_id, group_ids, tier_ids, group_tier_ids
       // check each action_name
-      const result = {};
       const actionids = {};
       for (const action_name of action_names) {
-        const sskey = `${userid}:${action_name}`;
+        const sskey = `${action_name}`;
         let allowed = await cache.hget(pkey, sskey);
         if (allowed !== undefined && allowed !== null) {
           result[action_name] = retAllowed(allowed);
@@ -206,7 +233,12 @@ export default {
           actionids[action_name] = actionid;
           // check access_rules
           allowed = null;
-          let current_context_ids = context_ids.slice(); // clone
+          let current_context_ids = [];
+          for(const cid of context_ids){
+            if (await this.isContextEnabled(trx, cid) === true){
+              current_context_ids.push(cid);
+            }
+          }
           while(allowed === null && (current_context_ids !== null && current_context_ids.length > 0)) {
             let found = null;
             for (const cid of current_context_ids) {
@@ -257,7 +289,9 @@ export default {
                     break;
                   }
                   if (parent_id > 0 && next_ids.indexOf(parent_id) < 0){
-                    next_ids.push(parent_id);
+                    if (await this.isContextEnabled(trx, parent_id) === true){
+                      next_ids.push(parent_id);
+                    }
                   }
                 }
               }
@@ -277,6 +311,8 @@ export default {
         }
         result[action_name] = retAllowed(allowed);
       }
+    }else{
+      result = JSON.parse(allowed);
     }
     await cache.hset(pkey, skey, JSON.stringify(result));
     return result;
@@ -308,10 +344,10 @@ export default {
     if (addRules === true){
       // copy rule to access_rules
       // from user_rules
-      const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
-      let orderno = 1;
-      if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
       for (const row of await trx('user_rules').select('*').orderBy('id','asc')) {
+        let orderno = 1;
+        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
+        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
         await trx('access_rules').insert({
           context_id: id,
           action_id: row.action_id,
@@ -326,6 +362,9 @@ export default {
       }
       // from group_rules
       for (const row of await trx('group_rules').select('*').orderBy('id','asc')) {
+        let orderno = 1;
+        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
+        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
         await trx('access_rules').insert({
           context_id: id,
           action_id: row.action_id,
@@ -340,6 +379,9 @@ export default {
       }
       // from tier_rules
       for (const row of await trx('tier_rules').select('*').orderBy('id','asc')) {
+        let orderno = 1;
+        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
+        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
         await trx('access_rules').insert({
           context_id: id,
           action_id: row.action_id,
@@ -370,7 +412,8 @@ export default {
     });
     const res = await trx('resources').select('target','target_id').where({ id: resource_id }).first();
      if (res) {
-       await cache.del(`rules:isAllowed:${res.target}:${res.target_id}`);
+      const keys = await cache.keys(`rules:isAllowed:${res.target}:${res.target_id}:*`);
+       await cache.delDirectKeys(keys);
      }
   },
   deleteResourceFromContext: async function(trx, resource_id, context_id) {
@@ -380,7 +423,8 @@ export default {
     }).del();
     const res = await trx('resources').select('target','target_id').where({ id: resource_id }).first();
      if (res) {
-       await cache.del(`rules:isAllowed:${res.target}:${res.target_id}`);
+      const keys = await cache.keys(`rules:isAllowed:${res.target}:${res.target_id}:*`);
+       await cache.delDirectKeys(keys);
      }
   },
 
@@ -430,7 +474,8 @@ export default {
     } 
     // invalidate cache
     await cache.del(`rules:resources:${target}:${target_id}`);
-    await cache.del(`rules:isAllowed:${target}:${target_id}`);
+    const keys = await cache.keys(`rules:isAllowed:${target}:${target_id}:*`);
+    await cache.delDirectKeys(keys);
     return context_ids;
   },
   deleteResource: async function(trx, target, target_id) {
@@ -458,7 +503,8 @@ export default {
     }
     // invalidate cache
     await cache.del(`rules:resources:${target}:${target_id}`);
-    await cache.del(`rules:isAllowed:${target}:${target_id}`);
+    const keys = await cache.keys(`rules:isAllowed:${target}:${target_id}:*`);
+    await cache.delDirectKeys(keys);
   },
   cloneResourceInheritanceIfNeeded: async function(trx, target, target_id) {
     const cres = await trx('resources').select('id').where({ target, target_id }).first();
@@ -490,7 +536,8 @@ export default {
       await trx('map_resource_context').where({ resource_id: cres.id }).update({ context_id: new_context_id });
       // invalidate cache
       await cache.del(`rules:resources:${target}:${target_id}`);
-      await cache.del(`rules:isAllowed:${target}:${target_id}`);
+      const keys = await cache.keys(`rules:isAllowed:${target}:${target_id}:*`);
+      await cache.delDirectKeys(keys);
       return new_context_id;
     }
     return context_id;
@@ -502,7 +549,8 @@ export default {
                                         .select('r.target', 'r.target_id')
                                         .where('m.context_id', context_id);
     for(const row of resourcesToInvalidate){
-      await cache.del(`rules:isAllowed:${row.target}:${row.target_id}`);
+      const keys = await cache.keys(`rules:isAllowed:${row.target}:${row.target_id}:*`);
+      await cache.delDirectKeys(keys);
     }
   },
   pushAccessRule: async function(trx, context_id, action_id, unit, unit_id, is_allow, source, source_id) {
@@ -629,6 +677,116 @@ export default {
     }
     return parent_context_id;
   },
+  _deleteCacheForUserRules: async function(trx, userid) {
+    await cache.del(`rules:user:${userid}`);
+  },
+  _deleteCacheForGroupRules: async function(trx, groupid) {
+    await cache.del(`rules:groups:${groupid}`);
+  },
+  _deleteCacheForTierRules: async function(trx, tierid) {
+    await cache.del(`rules:tiers:${tierid}`);
+  },
+  _deleteCacheForContextRules: async function(trx, context_id) {
+    await cache.del(`rules:context:${context_id}`);
+    // invalidate all resources under this context
+    const resourcesToInvalidate = await trx('map_resource_context as m')
+                                        .join('resources as r', 'm.resource_id', 'r.id')
+                                        .select('r.target', 'r.target_id')
+                                        .where('m.context_id', context_id);
+    for(const row of resourcesToInvalidate){
+      const keys = await cache.keys(`rules:isAllowed:${row.target}:${row.target_id}:*`);
+      await cache.delDirectKeys(keys);
+      await cache.del(`rules:resources:${row.target}:${row.target_id}`);
+    }
+  },
+  _getEnabledValue: function(is_enabled) {
+    if (is_enabled === true || is_enabled === 1 || is_enabled === '1' || is_enabled === 'true') {
+      return true;
+    }
+    if (is_enabled === false || is_enabled === 0 || is_enabled === '0' || is_enabled === 'false') {
+      return false;
+    }
+    return null;
+  },
+  isUserEnabled: async function(trx, userid) {
+    let isEnabled = await cache.hget(`rules:user:${userid}`, 'isEnabled');
+    if (isEnabled !== undefined && isEnabled !== null) isEnabled = this._getEnabledValue(isEnabled);
+    if (isEnabled !== null) return isEnabled;
+    // not in cache, check db
+    const row = await trx('users').select('is_enabled').where({ id: userid }).first();
+    isEnabled = row ? row.is_enabled : null;
+    if (isEnabled !== null) {
+      await cache.hset(`rules:user:${userid}`, 'isEnabled', isEnabled.toString());
+    }
+    return isEnabled;
+  },
+  isGroupEnabled: async function(trx, groupid) {
+    let isEnabled = await cache.hget(`rules:groups:${groupid}`, 'isEnabled');
+    if (isEnabled !== undefined && isEnabled !== null) isEnabled = this._getEnabledValue(isEnabled);
+    if (isEnabled !== null) return isEnabled;
+    // not in cache, check db
+    const row = await trx('groups').select('is_enabled').where({ id: groupid }).first();
+    isEnabled = row ? row.is_enabled : null;
+    if (isEnabled !== null) {
+      await cache.hset(`rules:groups:${groupid}`, 'isEnabled', isEnabled.toString());
+    }
+    return isEnabled;
+  },
+  isTierEnabled: async function(trx, tierid) {
+    let isEnabled = await cache.hget(`rules:tiers:${tierid}`, 'isEnabled');
+    if (isEnabled !== undefined && isEnabled !== null) isEnabled = this._getEnabledValue(isEnabled);
+    if (isEnabled !== null) return isEnabled;
+    // not in cache, check db
+    const row = await trx('tiers').select('is_enabled').where({ id: tierid }).first();
+    isEnabled = row ? row.is_enabled : null;
+    if (isEnabled !== null) {
+      await cache.hset(`rules:tiers:${tierid}`, 'isEnabled', isEnabled.toString());
+    }
+    return isEnabled;
+  },
+  isContextEnabled: async function(trx, context_id) {
+    let isEnabled = await cache.hget(`rules:context:${context_id}`, 'isEnabled');
+    if (isEnabled !== undefined && isEnabled !== null) isEnabled = this._getEnabledValue(isEnabled);
+    if (isEnabled !== null) return isEnabled;
+    // not in cache, check db
+    const row = await trx('contexts').select('is_enabled').where({ id: context_id }).first();
+    isEnabled = row ? row.is_enabled : null;
+    if (isEnabled !== null) {
+      await cache.hset(`rules:context:${context_id}`, 'isEnabled', isEnabled.toString());
+    }
+    return isEnabled;
+  },
+  updatedUserData: async function(trx, userid, isUpdateEnabled) {
+    await cache.del(`user:id:${userid}`);
+    await cache.del(`rules:user:${userid}`);
+    if (isUpdateEnabled === true) {
+      await this._deleteCacheForUserRules(trx, userid);
+    }
+  },
+  updatedGroupData: async function(trx, group_id, name,isUpdateEnabled) {
+    await cache.del(`group:id:${group_id}`);
+    await cache.del(`rules:groups:${name}`);
+    if (isUpdateEnabled === true) {
+      await this._deleteCacheForGroupRules(trx, group_id);
+    }
+  },
+  updatedTierData: async function(trx, tierid,isUpdateEnabled) {
+    await cache.del(`rules:tier:${tierid}`);
+    if (isUpdateEnabled === true) {
+      await this._deleteCacheForTierRules(trx, tierid);
+    }
+  },
+  updatedTierData: async function(trx, tierid,isUpdateEnabled) {
+    if (isUpdateEnabled === true) {
+      await this._deleteCacheForTierRules(trx, tierid);
+    }
+  },
+  updateContextData: async function(trx, context_id,isUpdateEnabled) {
+    await cache.hdel(`rules:context_parent`, context_id.toString());
+    if (isUpdateEnabled === true) {
+      await this._deleteCacheForContextRules(trx, context_id);
+    }
+  },
   getGroupIdByName: async function(trx, name) {
     let group_id = await cache.hget(`rules:groups:${name}`, 'id');
     if (group_id !== undefined && group_id !== null) return utils.parseSafeInt(group_id);
@@ -638,6 +796,19 @@ export default {
       await cache.hset(`rules:groups:${name}`, 'id', group_id.toString());
     }
     return group_id;
+  },
+  getParentGroupId: async function(trx, groupid) {
+    let parent_group_id = await cache.hget(`rules:group_parent`, groupid.toString());
+    if (parent_group_id !== undefined && parent_group_id !== null) {
+      return utils.parseSafeInt(parent_group_id);
+    }
+    // not in cache, check db
+    const cres = await trx('groups').select('parent_id').where({ id: groupid }).first();
+    parent_group_id = cres ? cres.parent_id : null;
+    if (parent_group_id !== null) {
+      await cache.hset(`rules:group_parent`, groupid.toString(), parent_group_id.toString());
+    }
+    return parent_group_id;
   },
   getGroupIdsByUser: async function(trx, userid) {
     let group_ids = await cache.hget(`rules:usergroups:${userid}`, 'group_ids');
@@ -651,6 +822,20 @@ export default {
     await cache.hset(`rules:usergroups:${userid}`, 'group_ids', JSON.stringify(group_ids));
     return group_ids;
   },
+  getFullGroupIdsByUser: async function(trx, userid) {
+    let direct_group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
+    let all_group_ids = new Set(direct_group_ids);
+    let queue = [...direct_group_ids];
+    while(queue.length > 0){
+      const gid = queue.shift();
+      const parent_gid = await this.getParentGroupId(trx, gid);
+      if (parent_gid && !all_group_ids.has(parent_gid)){
+        all_group_ids.add(parent_gid);
+        queue.push(parent_gid);
+      }
+    }
+    return Array.from(all_group_ids);
+  },
   checkUserInGroup: async function(trx, userid, groupid) {
     let group_ids = await this.getGroupIdsByUser(trx, userid); // ensure cache
     return group_ids.indexOf(groupid) >= 0;
@@ -660,14 +845,16 @@ export default {
     await cache.del(`rules:usergroups:${userid}`);
     await cache.del(`rules:usertiers:${userid}`);
     await cache.del(`rules:onlyusertiers:${userid}`);
-    await cache.del(`rules:isAllowed:${userid}`);
+    await this._deleteCacheForUserRules(trx, userid);
+    await this._deleteCacheForGroupRules(trx, groupid);
   },
   removeGroup: async function(trx, userid, groupid) {
     await trx('map_usergroup').where({ user_id: userid, group_id: groupid }).del();
     await cache.del(`rules:usergroups:${userid}`);
     await cache.del(`rules:usertiers:${userid}`);
     await cache.del(`rules:onlyusertiers:${userid}`);
-    await cache.del(`rules:isAllowed:${userid}`);
+    await this._deleteCacheForUserRules(trx, userid);
+    await this._deleteCacheForGroupRules(trx, groupid);
   },
   getTierNameById: async function(trx, tierid) {
     let tier_name = await cache.hget(`rules:tiers:id:${tierid}`, 'name');

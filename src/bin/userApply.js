@@ -37,6 +37,11 @@ const {
           type: "string",
           short: "t",
           default: "owner"
+        },
+        setEnabled: {
+          type: "string",
+          short: "e",
+          default: 'true'
         }
     }
 });
@@ -45,13 +50,14 @@ const {
 
 if (!values.id) {
     console.error("Error: User ID is required.");
-    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword] [--tier <tier>,...]");
+    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword] [--tier <tier>,...] [--setEnabled <true|false>]");
     console.error("  --id or -i: User ID (required)");
     console.error("  --name or -n: Display name (optional)");
     console.error("  --password or -p: Password (optional)");
     console.error("  --clearPassword or -c: Clear password (optional)");
     console.error("  --tier or -t: set tier (optional) default: owner");
-    console.error('Example: npm run userApply -- --id adm --name "AdminUser" --password "securepassword"');
+    console.error("  --setEnabled or -e: set enabled (optional) default: true");
+    console.error('Example: npm run userApply -- --id adm --name "AdminUser" --password "securepassword" --tier "owner,admin" --setEnabled true');
     process.exit(1);
 }
 
@@ -64,6 +70,7 @@ await database.transaction(async (trx) => {
     let login_id = null;
     let display_name = null;
     let hashed_password = null;
+    let enabled = (values.setEnabled.toLowerCase() === 'true') ? true : false;
 
     if (!existingUser) {
       login_id = values.id;
@@ -73,6 +80,7 @@ await database.transaction(async (trx) => {
         login_id,
         display_name,
         hashed_password,
+        enabled,
       });
       id = (await trx('users').select('id').where({ login_id: values.id }).first()).id;
     }else{
@@ -98,10 +106,13 @@ await database.transaction(async (trx) => {
         }).where({ id });
         hashed_password = null;
       }
+      await trx('users').update({
+        enabled,
+      }).where({ id });
     }
     if (values.tier) {
       // delete all tiers in context 1
-      const userTiers = await access.getTierIdsByUser(trx, id, 1);
+      const userTiers = await access.getTierIdsByUser(trx, id, [1]);
       for(const ut of userTiers){
         const tn = await access.getTierNameById(trx, ut);
         await access.removeTier_User(trx, id, ut, 1);
@@ -113,7 +124,7 @@ await database.transaction(async (trx) => {
         if(!tierid){
           throw new Error(`Tier not found: ${tierName}`);
         }
-        if (!await access.checkUserInTier(trx, id, tierid,1)){
+        if (!await access.checkUserInTier(trx, id, tierid,[1])){
           await access.addTier_User(trx, id, tierid, 1);
           console.log(`User added to tier ${tierName} (context 1)`);
         }else{
@@ -127,8 +138,9 @@ await database.transaction(async (trx) => {
     console.log('User Login ID:', login_id);
     console.log('User Name:', display_name);
     console.log('User Password:', hashed_password);
-    console.log('User Password Clear:', values.clearPassword);
+    console.log('User Password Clear:', values.clearPassword ? true : false);
     console.log('User Tier add:', values.tier);
+    console.log('User Enabled:', enabled);
   } catch (error) {
     console.error("Error registering user:", error);
     await trx.rollback();

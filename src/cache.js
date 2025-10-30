@@ -51,6 +51,11 @@ class Cache {
       return await client.keys(pattern);
     });
   }
+  async delDirectKeys(keys) {
+    return await this.run(async (client) => {
+      return await client.delDirectKeys(keys);
+    });
+  }
   async hgetall(key) {
     return await this.run(async (client) => {
       return await client.hgetall(key);

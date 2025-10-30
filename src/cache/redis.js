@@ -24,6 +24,12 @@ class RedisClientWrapper {
   async keys(pattern) {
     return await this.client.keys(this.prefix + pattern);
   }
+  async delDirectKeys(keys) {
+    if (keys.length > 0) {
+      return await this.client.del(keys);
+    }
+    return 0;
+  }
   async hgetall(key) {
     return await this.client.hGetAll(this.prefix + key);
   }
