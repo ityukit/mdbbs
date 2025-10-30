@@ -184,13 +184,7 @@ export default {
       // get context_ids
       const context_ids = await this.getContextIdsByResourceId(trx, resource_id);
       // get groups for user
-      const all_group_ids = await this.getFullGroupIdsByUser(trx, userid); // ensure cache
-      let group_ids = [];
-      for(const gid of all_group_ids){
-        if (await this.isGroupEnabled(trx, gid) === true){
-          group_ids.push(gid);
-        }
-      }
+      const group_ids = await this.getFullEnabledGroupIdsByUser(trx, userid); // ensure cache
       // get tier for user
       let tier_ids = {};
       for(const cid of context_ids){
@@ -776,9 +770,63 @@ export default {
       await this._deleteCacheForTierRules(trx, tierid);
     }
   },
-  updatedTierData: async function(trx, tierid,isUpdateEnabled) {
-    if (isUpdateEnabled === true) {
-      await this._deleteCacheForTierRules(trx, tierid);
+  updatedRules: async function(trx) {
+    // copy all user_rules, group_rules, tier_rules to access_rules
+    for (const row of await trx('context_copyto').select('context_id').orderBy('context_id','asc')) {
+      // delete existing rules in access_rules
+      await trx('access_rules').where({ context_id: row.context_id, unit: this.UNIT_USER }).del();
+      await trx('access_rules').where({ context_id: row.context_id, unit: this.UNIT_GROUP }).del();
+      await trx('access_rules').where({ context_id: row.context_id, unit: this.UNIT_TIER }).del();
+      // from user_rules
+      for (const ur of await trx('user_rules').select('*').orderBy('id','asc')) {
+        let orderno = 1;
+        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, action_id: ur.action_id }).first();
+        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
+        await trx('access_rules').insert({
+          context_id: row.context_id,
+          action_id: ur.action_id,
+          unit: this.UNIT_USER,
+          unit_id: ur.user_id,
+          is_allow: ur.is_allow,
+          orderno: orderno,
+          source: this.SOURCE_USER_RULES,
+          source_id: ur.id,
+        });
+      }
+      // from group_rules
+      for (const gr of await trx('group_rules').select('*').orderBy('id','asc')) {
+        let orderno = 1;
+        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, action_id: gr.action_id }).first();
+        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
+        await trx('access_rules').insert({
+          context_id: row.context_id,
+          action_id: gr.action_id,
+          unit: this.UNIT_GROUP,
+          unit_id: gr.group_id,
+          is_allow: gr.is_allow,
+          orderno: orderno,
+          source: this.SOURCE_GROUP_RULES,
+          source_id: gr.id,
+        });
+      }
+      // from tier_rules
+      for (const tr of await trx('tier_rules').select('*').orderBy('id','asc')) {
+        let orderno = 1;
+        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, action_id: tr.action_id }).first();
+        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
+        await trx('access_rules').insert({
+          context_id: row.context_id,
+          action_id: tr.action_id,
+          unit: this.UNIT_TIER,
+          unit_id: tr.tier_id,
+          is_allow: tr.is_allow,
+          orderno: orderno,
+          source: this.SOURCE_TIER_RULES,
+          source_id: tr.id,
+        });
+      }
+      // invalidate cache for this context
+      await this._deleteCacheForContextRules(trx, row.context_id);
     }
   },
   updateContextData: async function(trx, context_id,isUpdateEnabled) {
