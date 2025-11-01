@@ -1,6 +1,7 @@
 import database from '../database.js';
 import pHash from '../lib/phash.js';
 import access from '../lib/access.js';
+import utils from '../lib/utils.js';
 
 import init from '../init.js';
 const settings = init.getSettings();
@@ -42,6 +43,11 @@ const {
           type: "string",
           short: "e",
           default: 'true'
+        },
+        contextIds: {
+          type: "string",
+          short: "c",
+          default: "1"
         }
     }
 });
@@ -50,14 +56,15 @@ const {
 
 if (!values.id) {
     console.error("Error: User ID is required.");
-    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword] [--tier <tier>,...] [--setEnabled <true|false>]");
+    console.error("Usage: npm run userApply -- --id <user_id> [--name <display_name>] [--password <password>] [--clearPassword] [--tier <tier>,...] [--setEnabled <true|false>] [--contextIds <context_id>,...]");
     console.error("  --id or -i: User ID (required)");
     console.error("  --name or -n: Display name (optional)");
     console.error("  --password or -p: Password (optional)");
     console.error("  --clearPassword or -c: Clear password (optional)");
     console.error("  --tier or -t: set tier (optional) default: owner");
     console.error("  --setEnabled or -e: set enabled (optional) default: true");
-    console.error('Example: npm run userApply -- --id adm --name "AdminUser" --password "securepassword" --tier "owner,admin" --setEnabled true');
+    console.error("  --contextIds or -c: set context IDs (optional) default: 1");
+    console.error('Example: npm run userApply -- --id adm --name "AdminUser" --password "securepassword" --tier "owner,admin" --setEnabled true --contextIds "1,2"');
     process.exit(1);
 }
 
@@ -71,6 +78,7 @@ await database.transaction(async (trx) => {
     let display_name = null;
     let hashed_password = null;
     let enabled = (values.setEnabled.toLowerCase() === 'true') ? true : false;
+    let contextIds = values.contextIds.split(',').map((v) => utils.parseSafeInt(v.trim())).filter((v) => v  > 0);
 
     if (!existingUser) {
       login_id = values.id;
@@ -112,11 +120,13 @@ await database.transaction(async (trx) => {
     }
     if (values.tier) {
       // delete all tiers in context 1
-      const userTiers = await access.getTierIdsByUser(trx, id, [1]);
+      const userTiers = await access.getTierIdsByUser(trx, id, contextIds);
       for(const ut of userTiers){
         const tn = await access.getTierNameById(trx, ut);
-        await access.removeTier_User(trx, id, ut, 1);
-        console.log(`User removed from tier ${tn}(id:${ut}) (context 1)`);
+        for(const cid of contextIds){
+          await access.removeTier_User(trx, id, ut, cid);
+        }
+        console.log(`User removed from tier ${tn}(id:${ut}) (context ${contextIds.join(',')})`);
       }
       // add tiers
       for(const tierName of values.tier.split(',')){
@@ -124,14 +134,16 @@ await database.transaction(async (trx) => {
         if(!tierid){
           throw new Error(`Tier not found: ${tierName}`);
         }
-        if (!await access.checkUserInTier(trx, id, tierid,[1])){
-          await access.addTier_User(trx, id, tierid, 1);
-          console.log(`User added to tier ${tierName} (context 1)`);
-        }else{
-          console.log(`User already in tier ${tierName} (context 1)`);
+        for(const cid of contextIds){
+          if (!await access.checkUserInTier(trx, id, tierid,[cid])){
+            await access.addTier_User(trx, id, tierid, cid);
+            console.log(`User added to tier ${tierName} (context ${cid})`);
+          }else{
+            console.log(`User already in tier ${tierName} (context ${cid})`);
+          }
         }
       }
-    }
+   }
     await trx.commit();
     console.log("User registration/update successful");
     console.log('User ID:', id);
@@ -141,6 +153,7 @@ await database.transaction(async (trx) => {
     console.log('User Password Clear:', values.clearPassword ? true : false);
     console.log('User Tier add:', values.tier);
     console.log('User Enabled:', enabled);
+    console.log('User Context IDs:', contextIds.join(','));
   } catch (error) {
     console.error("Error registering user:", error);
     await trx.rollback();

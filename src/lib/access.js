@@ -133,7 +133,7 @@ export default {
         }
       }
       if (inGroup){
-        const row = await trx('group_self_rules').select('is_allow').whereIn('action_id', actionid).first();
+        const row = await trx('group_self_rules').select('is_allow').where('action_id', actionid).first();
         if (row) {
           allowed = row.is_allow;
         }
@@ -153,7 +153,7 @@ export default {
         }
       }
       if (inTier){
-        const row = await trx('tier_self_rules').select('is_allow').whereIn('action_id', actionid).first();
+        const row = await trx('tier_self_rules').select('is_allow').where('action_id', actionid).first();
         if (row) {
           allowed = row.is_allow;
         }
@@ -210,19 +210,12 @@ export default {
         if (allowed !== undefined && allowed !== null) {
           result[action_name] = retAllowed(allowed);
         }else{
-          let actionid = await cache.hget(`rules:actionid`, action_name);
-          if (actionid === undefined || actionid === null) {
-            const row = await trx('actions').select('id').where({ action_name: action_name }).first();
-            if (!row) {
-              // no such action, so no permissions
-              allowed = false;
-              result[action_name] = false;
-              continue;
-            }
-            actionid = row.id;
-            await cache.hset(`rules:actionid`, action_name, actionid.toString());
-          } else {
-            actionid = utils.parseSafeInt(actionid);
+          let actionid = await this.getActionIdByName(trx, action_name);
+          if (actionid < 1){
+            // no such action, so no permissions
+            allowed = false;
+            result[action_name] = false;
+            continue;
           }
           actionids[action_name] = actionid;
           // check access_rules
@@ -834,6 +827,16 @@ export default {
     if (isUpdateEnabled === true) {
       await this._deleteCacheForContextRules(trx, context_id);
     }
+  },
+  getActionIdByName: async function(trx, name) {
+    let actionid = await cache.hget(`rules:actionid`, name);
+    if (actionid !== undefined && actionid !== null) return utils.parseSafeInt(actionid);
+    const row = await trx('actions').select('id').where({ action_name: name }).first();
+    actionid = row ? row.id : null;
+    if (actionid !== null) {
+      await cache.hset(`rules:actionid`, name, actionid.toString());
+    }
+    return actionid;
   },
   getGroupIdByName: async function(trx, name) {
     let group_id = await cache.hget(`rules:groups:${name}`, 'id');
