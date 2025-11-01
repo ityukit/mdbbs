@@ -168,7 +168,7 @@ export default {
 
   isMultipleAllowed: async function(trx, userid, action_names, target, target_id, selfObject) {
     const pkey = `rules:isAllowed:${target}:${target_id}:${userid}`;
-    const skey = `${action_names.join(',')}`;
+    const skey = `${action_names.sort().join(',')}`;
     let allowed = await cache.hget(pkey, skey);
     const result = {};
     if (await this.isUserEnabled(trx, userid) === false) {
@@ -960,7 +960,7 @@ export default {
     return tier_ids;
   },
   getTierIdsByGroupOneContext: async function(trx, groupids, context_id) {
-    let tier_ids = await cache.hget(`rules:onlygroupstiers:${groupids.join(',')}`, context_id.toString());
+    let tier_ids = await cache.hget(`rules:onlygroupstiers:${groupids.sort().join(',')}`, context_id.toString());
     if (tier_ids !== undefined && tier_ids !== null) {
       return JSON.parse(tier_ids);
     }
@@ -977,7 +977,7 @@ export default {
         await cache.hset(`rules:onlygrouptiers:${groupid}`, context_id.toString(), JSON.stringify(tids));
       }
     }
-    await cache.hset(`rules:onlygrouptiers:${groupids.join(',')}`, context_id.toString(), JSON.stringify(tier_ids));
+    await cache.hset(`rules:onlygrouptiers:${groupids.sort().join(',')}`, context_id.toString(), JSON.stringify(tier_ids));
     return tier_ids;
   },
   getTierIdsByGroup: async function(trx, groupids, context_ids) {
@@ -990,7 +990,7 @@ export default {
       let tids = await this.getTierIdsByGroupOneContext(trx, groupids, context_id); // ensure cache
       tier_ids = tier_ids.concat(tids);
     }
-    await cache.hset(`rules:grouptiers:${groupids.join(',')}`, context_ids.sort().join(','), JSON.stringify(tier_ids));
+    await cache.hset(`rules:grouptiers:${groupids.sort().join(',')}`, context_ids.sort().join(','), JSON.stringify(tier_ids));
     return tier_ids;
   },
   getTierIdsByUser: async function(trx, userid, context_ids) {
