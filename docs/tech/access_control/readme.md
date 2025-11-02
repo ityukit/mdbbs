@@ -9,12 +9,12 @@
     * 例外規則として、個別のユーザ・グループ・ティアに対する優先権限判定を登録可能
   * 上記RBACで判定できない場合はABACで判定
 
-## 理解のために
+## 理解のために(このドキュメントを読む前に読んでください)
 
-* [簡単な仕様説明](./00_simple%20explanation.md)
-* [利用例](./01_example%20usage.md)
-* [データ構造](./02_data%20structure.md)
-* [判定アルゴリズム](./03_judgment%20algorithm.md)
+* [簡単な仕様説明](./00_simple_explanation.md)
+* [利用例](./01_example_usage.md)
+* [データ構造](./02_data_structure.md)
+* [判定アルゴリズム](./03_judgment_algorithm.md)
 
 ## できること
 
