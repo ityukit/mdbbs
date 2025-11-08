@@ -1,8 +1,11 @@
 import cache from "../cache.js";
 import utils from "./utils.js";
 import cacheUser from './cacheUser.js';
-import { is } from "date-fns/locale";
-import f from "session-file-store";
+import Logger from "../logger.js";
+import settings from "./settings.js";
+
+const logger = Logger();
+
 
 function retAllowed(val) {
   if (val === true) return true;
@@ -113,7 +116,7 @@ export default {
     if (await this.isUserEnabled(trx, userid) === false) {
       return false;
     }
-    if (allowed === null && selfObject.userids.indexOf(userid) >= 0){
+    if (allowed === null && selfObject.userids && selfObject.userids.indexOf(userid) >= 0){
       const row = await trx('user_self_rules').select('is_allow').where({ action_id: actionid }).first();
       if (row) {
         allowed = row.is_allow;
@@ -167,11 +170,13 @@ export default {
   },
 
   isMultipleAllowed: async function(trx, userid, action_names, target, target_id, selfObject) {
+    logger.debug(`isMultipleAllowed: userid=${userid}, action_names=${action_names.join(',')}, target=${target}, target_id=${target_id}`);
     const pkey = `rules:isAllowed:${target}:${target_id}:${userid}`;
     const skey = `${action_names.sort().join(',')}`;
     let allowed = await cache.hget(pkey, skey);
-    const result = {};
+    let result = {};
     if (await this.isUserEnabled(trx, userid) === false) {
+      logger.debug(`isMultipleAllowed: userid=${userid}, action_names=${action_names.join(',')}, target=${target}, target_id=${target_id} - user is disabled`);
       const t = {};
       for (const action_name of action_names) {
         t[action_name] = false;
@@ -181,25 +186,31 @@ export default {
     if (allowed === undefined || allowed === null) {
       // check resources
       const resource_id = await this.getResourceIdByTarget(trx, target, target_id);
+      logger.debug(`isMultipleAllowed: userid=${userid}, action_names=${action_names.join(',')}, target=${target}, target_id=${target_id} - resource_id=${resource_id}`);
       // get context_ids
       const context_ids = await this.getContextIdsByResourceId(trx, resource_id);
+      logger.debug(`isMultipleAllowed: userid=${userid}, action_names=${action_names.join(',')}, target=${target}, target_id=${target_id} - context_ids=${context_ids.join(',')}`);
       // get groups for user
       const group_ids = await this.getFullEnabledGroupIdsByUser(trx, userid); // ensure cache
+      logger.debug(`isMultipleAllowed: userid=${userid}, action_names=${action_names.join(',')}, target=${target}, target_id=${target_id} - group_ids=${group_ids.join(',')}`);
       // get tier for user
       let tier_ids = {};
       for(const cid of context_ids){
-        const tids = await this.getTierIdsByUserOnlyOneContext(trx, userid, cid); // ensure cache
+        const tids = await this.getTierIdsByUser(trx, userid, [cid]); // ensure cache
         for(const tid of tids){
           if (tid < 0) {
             // 明確に拒否する
+            logger.debug(`isMultipleAllowed: userid=${userid}, action_names=${action_names.join(',')}, target=${target}, target_id=${target_id} - tier ${tid} denies access`);
             await cache.hset(pkey, skey, 'false');
             return retAllowed(false);
           }
           if (await this.isTierEnabled(trx, tid) === true){
-            tier_ids[cid] = tid;
+            if (!tier_ids[cid]) tier_ids[cid] = [];
+            tier_ids[cid].push(tid);
           }
         }
       }
+      logger.debug(`isMultipleAllowed: userid=${userid}, action_names=${action_names.join(',')}, target=${target}, target_id=${target_id} - tier_ids=${JSON.stringify(tier_ids)}`);
       //let tier_ids = await this.getTierIdsByUser(trx, userid, context_ids); // ensure cache
       // now we have inheritance_id, user_id, group_ids, tier_ids, group_tier_ids
       // check each action_name
@@ -208,11 +219,13 @@ export default {
         const sskey = `${action_name}`;
         let allowed = await cache.hget(pkey, sskey);
         if (allowed !== undefined && allowed !== null) {
+          logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - cache hit: allowed=${allowed}`);
           result[action_name] = retAllowed(allowed);
         }else{
           let actionid = await this.getActionIdByName(trx, action_name);
           if (actionid < 1){
             // no such action, so no permissions
+            logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - no such action`);
             allowed = false;
             result[action_name] = false;
             continue;
@@ -226,30 +239,37 @@ export default {
               current_context_ids.push(cid);
             }
           }
+          logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - starting context_ids=${current_context_ids.join(',')}`);
           while(allowed === null && (current_context_ids !== null && current_context_ids.length > 0)) {
+            logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - checking context_ids=${current_context_ids.join(',')}`);
             let found = null;
             for (const cid of current_context_ids) {
-              const rows = await trx.select('is_allow')
+              logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id}, group_ids = ${JSON.stringify(group_ids)} , tier_ids = ${JSON.stringify(tier_ids)} - checking context_id=${cid}`);
+              const q = trx.select('is_allow')
                                     .from('access_rules')
                                     .where({ action_id: actionid, context_id: cid })
-                                    .andWhere(function() {
-                                      this.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
+                                    .andWhere((qb) => {
+                                      qb.where((sqb) => {
+                                        sqb.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
+                                      });
                                       if (group_ids.length > 0) {
-                                        this.orWhere(function() {
-                                          this.where('unit', this.UNIT_GROUP).andWhereIn('unit_id', group_ids);
-                                        }.bind(this));
+                                        qb.orWhere((sqb) => {
+                                          sqb.where('unit', this.UNIT_GROUP).whereIn('unit_id', group_ids);
+                                        });
                                       }
                                       if (tier_ids[cid] && tier_ids[cid].length > 0) {
-                                        this.orWhere(function() {
-                                          this.where('unit', this.UNIT_TIER).andWhereIn('unit_id', tier_ids[cid]);
-                                        }.bind(this));
+                                        qb.orWhere((sqb) => {
+                                          sqb.where('unit', this.UNIT_TIER).whereIn('unit_id', tier_ids[cid]);
+                                        });
                                       }
-                                      this.orWhere(function() {
-                                        this.where('unit', this.UNIT_ALL);
-                                      }.bind(this));
-                                    }.bind(this))
+                                      qb.orWhere((sqb) => {
+                                        sqb.where('unit', this.UNIT_ALL);
+                                      });
+                                    })
                                     .orderBy('orderno', 'asc')
                                     .limit(1);
+              logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - running query: ${q.toString()}`);
+              const rows = await q;
               if (rows.length > 0) {
                 if (rows[0].is_allow) {
                   found = rows[0].is_allow;
@@ -260,6 +280,7 @@ export default {
                 }
               }
             }
+            logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - found=${found}`);
             if (found === null) {
               const next_ids = [];
               for (const cid of current_context_ids){
@@ -282,20 +303,45 @@ export default {
                   }
                 }
               }
+              logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - moving to parent context_ids=${next_ids.join(',')}`);
               current_context_ids = next_ids;
+              // load tier ids again for new context_ids
+              for(const cid of current_context_ids){
+                if (!tier_ids[cid]){
+                  const tierIds = await this.getTierIdsByUser(trx, userid, [cid]);
+                  for(const tid of tierIds){
+                    if (tid < 0) {
+                      // 明確に拒否する
+                      logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - tier ${tid} denies access`);
+                      allowed = false;
+                      await cache.hset(pkey, sskey, 'false');
+                      result[action_name] = false;
+                      break;
+                    }
+                    if (await this.isTierEnabled(trx, tid) === true){
+                      if (!tier_ids[cid]) tier_ids[cid] = [];
+                      tier_ids[cid].push(tid);
+                    }
+                  }
+                }
+              }
+              logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - updated tier_ids=${JSON.stringify(tier_ids)}`);
             } else {
               allowed = found;
             }
           }
+          logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - allowed=${allowed}`);
           if (allowed === null) {
             // self permission only
             allowed = await this.isAllowedSelf(trx, userid, actionid,context_ids,selfObject);
+            logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - self permission allowed=${allowed}`);
           }
           if (allowed === null) allowed = false; // default deny
           if (allowed) {
             await cache.hset(pkey, sskey, allowed.toString());
           }
         }
+        logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - final allowed=${allowed}`);
         result[action_name] = retAllowed(allowed);
       }
     }else{
@@ -321,6 +367,8 @@ export default {
       if (id !== force_insert_id){
         throw new Error(`Cannot create context with id ${force_insert_id} because the database assigned a different id ${id}.`);
       }
+      // set sequence to next value
+      await trx.raw(`SELECT setval(pg_get_serial_sequence('contexts', 'id'), GREATEST((SELECT MAX(id) FROM contexts)+1, nextval(pg_get_serial_sequence('contexts', 'id'))), false);`);
     }else{
       const insertRes = await trx('contexts').insert({
         parent_id,
@@ -630,25 +678,28 @@ export default {
     let resource_id = await cache.hget(`rules:resources:${target}:${target_id}`, 'id');
     if (resource_id !== undefined && resource_id !== null) return utils.parseSafeInt(resource_id);
     // not in cache, check db
-    const res = await trx('resources').select('id','target_id').where({ target }).where({ target_id });
+    const res = await trx('resources').select('id','target_id').where({ target }).where({ target_id }).first();
     resource_id = res ? res.id : null;
     if (resource_id !== null) {
       await cache.hset(`rules:resources:${target}:${target_id}`, 'id', resource_id.toString());
     }
     return resource_id;
   },
-  getContextIds: async function(trx, target, target_id) {
-    let context_ids = await cache.hget(`rules:resources:${target}:${target_id}`, 'context_ids');
+  getContextIdsByResourceId: async function(trx, resource_id) {
+    if (!resource_id) return [];
+    let context_ids = await cache.hget(`rules:resources:id:${resource_id}`, 'context_ids');
     if (context_ids !== undefined && context_ids !== null) return JSON.parse(context_ids);
     // not in cache, check db
-    const resource_id = await this.getResourceIdByTarget(trx, target, target_id);
-    if (!resource_id) return [];
     const cctx = await trx('map_resource_context').select('context_id').where({ resource_id }).orderBy('context_id','asc');
     context_ids = cctx ? cctx.map(r => r.context_id) : [];
     if (context_ids.length > 0) {
-      await cache.hset(`rules:resources:${target}:${target_id}`, 'context_ids', JSON.stringify(context_ids));
+      await cache.hset(`rules:resources:id:${resource_id}`, 'context_ids', JSON.stringify(context_ids));
     }
     return context_ids;
+  },
+  getContextIds: async function(trx, target, target_id) {
+    const resource_id = await this.getResourceIdByTarget(trx, target, target_id);
+    return this.getContextIdsByResourceId(trx, resource_id);
   },
   getParentContextId: async function(trx, context_id) {
     if (context_id <= 0) return null;
@@ -696,51 +747,62 @@ export default {
     return null;
   },
   isUserEnabled: async function(trx, userid) {
-    let isEnabled = await cache.hget(`rules:user:${userid}`, 'isEnabled');
-    if (isEnabled !== undefined && isEnabled !== null) isEnabled = this._getEnabledValue(isEnabled);
-    if (isEnabled !== null) return isEnabled;
+    let isEnabled = await cache.hget(`rules:user:${userid}`, 'enabled');
+    if (isEnabled !== undefined && isEnabled !== null){
+      isEnabled = this._getEnabledValue(isEnabled);
+      if (isEnabled !== null) return isEnabled;
+    }
     // not in cache, check db
-    const row = await trx('users').select('is_enabled').where({ id: userid }).first();
-    isEnabled = row ? row.is_enabled : null;
+    const row = await trx('users').select('enabled').where({ id: userid }).first();
+    isEnabled = row ? row.enabled : null;
     if (isEnabled !== null) {
-      await cache.hset(`rules:user:${userid}`, 'isEnabled', isEnabled.toString());
+      await cache.hset(`rules:user:${userid}`, 'enabled', isEnabled.toString());
     }
     return isEnabled;
   },
   isGroupEnabled: async function(trx, groupid) {
-    let isEnabled = await cache.hget(`rules:groups:${groupid}`, 'isEnabled');
-    if (isEnabled !== undefined && isEnabled !== null) isEnabled = this._getEnabledValue(isEnabled);
-    if (isEnabled !== null) return isEnabled;
+    let isEnabled = await cache.hget(`rules:groups:${groupid}`, 'enabled');
+    if (isEnabled !== undefined && isEnabled !== null) {
+      isEnabled = this._getEnabledValue(isEnabled);
+      if (isEnabled !== null) return isEnabled;
+    }
     // not in cache, check db
-    const row = await trx('groups').select('is_enabled').where({ id: groupid }).first();
-    isEnabled = row ? row.is_enabled : null;
+    const row = await trx('groups').select('enabled').where({ id: groupid }).first();
+    isEnabled = row ? row.enabled : null;
     if (isEnabled !== null) {
-      await cache.hset(`rules:groups:${groupid}`, 'isEnabled', isEnabled.toString());
+      await cache.hset(`rules:groups:${groupid}`, 'enabled', isEnabled.toString());
     }
     return isEnabled;
   },
   isTierEnabled: async function(trx, tierid) {
-    let isEnabled = await cache.hget(`rules:tiers:${tierid}`, 'isEnabled');
-    if (isEnabled !== undefined && isEnabled !== null) isEnabled = this._getEnabledValue(isEnabled);
-    if (isEnabled !== null) return isEnabled;
+    let isEnabled = await cache.hget(`rules:tiers:${tierid}`, 'enabled');
+    if (isEnabled !== undefined && isEnabled !== null) {
+      isEnabled = this._getEnabledValue(isEnabled);
+      if (isEnabled !== null) return isEnabled;
+    }
     // not in cache, check db
-    const row = await trx('tiers').select('is_enabled').where({ id: tierid }).first();
-    isEnabled = row ? row.is_enabled : null;
+    const row = await trx('tiers').select('enabled').where({ id: tierid }).first();
+    isEnabled = row ? row.enabled : null;
     if (isEnabled !== null) {
-      await cache.hset(`rules:tiers:${tierid}`, 'isEnabled', isEnabled.toString());
+      await cache.hset(`rules:tiers:${tierid}`, 'enabled', isEnabled.toString());
     }
     return isEnabled;
   },
   isContextEnabled: async function(trx, context_id) {
-    let isEnabled = await cache.hget(`rules:context:${context_id}`, 'isEnabled');
-    if (isEnabled !== undefined && isEnabled !== null) isEnabled = this._getEnabledValue(isEnabled);
-    if (isEnabled !== null) return isEnabled;
-    // not in cache, check db
-    const row = await trx('contexts').select('is_enabled').where({ id: context_id }).first();
-    isEnabled = row ? row.is_enabled : null;
-    if (isEnabled !== null) {
-      await cache.hset(`rules:context:${context_id}`, 'isEnabled', isEnabled.toString());
+    logger.debug(`isContextEnabled: context_id=${context_id}`);
+    let isEnabled = await cache.hget(`rules:context:${context_id}`, 'enabled');
+    logger.debug(`isContextEnabled: cache isEnabled=${isEnabled}`);
+    if (isEnabled !== undefined && isEnabled !== null){
+      isEnabled = this._getEnabledValue(isEnabled);
+      if (isEnabled !== null) return isEnabled;
     }
+    // not in cache, check db
+    const row = await trx('contexts').select('enabled').where({ id: context_id }).first();
+    isEnabled = row ? row.enabled : null;
+    if (isEnabled !== null) {
+      await cache.hset(`rules:context:${context_id}`, 'enabled', isEnabled.toString());
+    }
+    logger.debug(`isContextEnabled: context_id=${context_id} isEnabled=${isEnabled}`);
     return isEnabled;
   },
   updatedUserData: async function(trx, userid, isUpdateEnabled) {
@@ -938,6 +1000,30 @@ export default {
     }
     return tier_id;
   },
+  getAllParentTierIds: async function(trx, tierid) {
+    let parent_tier_ids = await cache.hget(`rules:tiers:id:${tierid}`, 'all_parent_ids');
+    if (parent_tier_ids !== undefined && parent_tier_ids !== null) {
+      parent_tier_ids = JSON.parse(parent_tier_ids);
+      return parent_tier_ids;
+    }
+    // not in cache, check db
+    const rows = await trx.withRecursive('parent_tiers', (qb) => {
+      qb.select('id', 'parent_id')
+        .from('tiers')
+        .where({ id: tierid })
+        .unionAll(function() {
+          this.select('t.id', 't.parent_id')
+              .from('tiers as t')
+              .join('parent_tiers as pt', 't.id', 'pt.parent_id')
+              .where('t.id', '!=', -1)
+        });
+    }).select('id').from('parent_tiers').where('id', '!=', tierid);
+    parent_tier_ids = rows.map(r => r.id);
+    if (parent_tier_ids.length > 0) {
+      await cache.hset(`rules:tiers:id:${tierid}`, 'all_parent_ids', JSON.stringify(parent_tier_ids));
+    }
+    return parent_tier_ids;
+  },
   getTierIdsByUserOnlyOneContext: async function(trx, userid, context_id) {    
     let tier_ids = await cache.hget(`rules:onlyusertiers:${userid}`, context_id.toString() );
     if (tier_ids !== undefined && tier_ids !== null) {
@@ -946,6 +1032,11 @@ export default {
     // not in cache, check db
     const rows = await trx('map_usertier').select('tier_id').where({ user_id: userid, context_id: context_id });
     tier_ids = rows.map(r => r.tier_id);
+    for(const tier_id of tier_ids){
+      const parent_tier_ids = await this.getAllParentTierIds(trx, tier_id); // ensure cache
+      tier_ids = tier_ids.concat(parent_tier_ids);
+    }
+    tier_ids = [...new Set(tier_ids)]; // unique
     await cache.hset(`rules:onlyusertiers:${userid}`, context_id.toString(), JSON.stringify(tier_ids));
     return tier_ids;
   },
@@ -959,6 +1050,7 @@ export default {
       let tids = await this.getTierIdsByUserOnlyOneContext(trx, userid, context_id); // ensure cache
       tier_ids = tier_ids.concat(tids);
     }
+    tier_ids = [...new Set(tier_ids)]; // unique
     await cache.hset(`rules:usertiers:${userid}`, context_ids.sort().join(','), JSON.stringify(tier_ids));
     return tier_ids;
   },
@@ -980,6 +1072,11 @@ export default {
         await cache.hset(`rules:onlygrouptiers:${groupid}`, context_id.toString(), JSON.stringify(tids));
       }
     }
+    for(const tier_id of tier_ids){
+      const parent_tier_ids = await this.getAllParentTierIds(trx, tier_id); // ensure cache
+      tier_ids = tier_ids.concat(parent_tier_ids);
+    }
+    tier_ids = [...new Set(tier_ids)]; // unique
     await cache.hset(`rules:onlygrouptiers:${groupids.sort().join(',')}`, context_id.toString(), JSON.stringify(tier_ids));
     return tier_ids;
   },
@@ -993,6 +1090,7 @@ export default {
       let tids = await this.getTierIdsByGroupOneContext(trx, groupids, context_id); // ensure cache
       tier_ids = tier_ids.concat(tids);
     }
+    tier_ids = [...new Set(tier_ids)]; // unique
     await cache.hset(`rules:grouptiers:${groupids.sort().join(',')}`, context_ids.sort().join(','), JSON.stringify(tier_ids));
     return tier_ids;
   },

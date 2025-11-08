@@ -5,9 +5,9 @@ import dateFormat from 'date-format';
 import chalk from 'chalk';
 
 import util from 'node:util';
-import fs from 'fs';
-
 import init from './init.js';
+
+const defaultSettings = init.getSettings();
 
 //import path from 'node:path';
 //import { console } from 'inspector';
@@ -82,6 +82,9 @@ export function moduleFilepathGenerator(lv) {
 export default function logger(gconfig, objectName) {
   if (gconfig === undefined || gconfig === null) {
     gconfig = {};
+    if (defaultSettings !== undefined && defaultSettings !== null) {
+      gconfig = defaultSettings;
+    }
   }
   let filepath = moduleFilepathGenerator(1);
   let module = moduleNameGenerator(filepath);
