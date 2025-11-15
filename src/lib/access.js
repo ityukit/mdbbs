@@ -2,9 +2,12 @@ import cache from "../cache.js";
 import utils from "./utils.js";
 import cacheUser from './cacheUser.js';
 import Logger from "../logger.js";
-import settings from "./settings.js";
+import init from '../init.js';
+
+const settings = init.getSettings();
 
 const logger = Logger();
+
 
 
 function retAllowed(val) {
@@ -39,7 +42,8 @@ export default {
   usermapping: async function(current_userid, userid, target, target_id, trx) {
     const user = await cacheUser.getUserById(userid, trx);
     if (!user) return null;
-    const multipleAllowed = this.isMultipleAllowed(trx, current_userid, ['user.get', 'user.get_sensitive','user.getDetails','user.getwithstatus_visible','user.getwithstatus_enable','user.getwithstatus_lock'], target, target_id);
+    const multipleAllowed = await this.isMultipleAllowed(trx, current_userid, ['user.get', 'user.get_sensitive','user.getDetails','user.getwithstatus_visible','user.getwithstatus_enable','user.getwithstatus_lock'], target, target_id);
+    logger.debug(`usermapping: current_userid=${current_userid}, userid=${userid}, target=${target}, target_id=${target_id} - multipleAllowed=${JSON.stringify(multipleAllowed)}`);
     if (!multipleAllowed['user.get']) return {};
     const ret = {
       id: user.id,
@@ -75,7 +79,7 @@ export default {
   groupmapping: async function(current_userid, groupid, target, target_id, trx) {
     const group = await cacheUser.getGroupById(groupid, trx);
     if (!group) return null;
-    const multipleAllowed = this.isMultipleAllowed(trx, current_userid, ['group.get', 'group.getSensitive','group.getDetails','group.getwithstatus_visible','group.getwithstatus_enable','group.getwithstatus_lock'], target, target_id);
+    const multipleAllowed = await this.isMultipleAllowed(trx, current_userid, ['group.get', 'group.getSensitive','group.getDetails','group.getwithstatus_visible','group.getwithstatus_enable','group.getwithstatus_lock'], target, target_id);
     if (!multipleAllowed['group.get']) return {};
     const ret = {
       id: group.id,
@@ -116,12 +120,15 @@ export default {
     if (await this.isUserEnabled(trx, userid) === false) {
       return false;
     }
+    if (selfObject === null || selfObject === undefined) {
+      return null;
+    }
     if (allowed === null && selfObject.userids && selfObject.userids.indexOf(userid) >= 0){
       const row = await trx('user_self_rules').select('is_allow').where({ action_id: actionid }).first();
       if (row) {
         allowed = row.is_allow;
       }
-  }
+    }
     // check group_self_permission
     if (allowed === null && selfObject.groupids && selfObject.groupids.length > 0) {
       // get groups for user
@@ -351,6 +358,66 @@ export default {
     return result;
   },
 
+  copyDefaultRulesToContext: async function(trx, context_id, isFutureUpdate) {
+    // from user_rules
+    for (const row of await trx('user_rules').select('*').orderBy('id','asc')) {
+      let orderno = 1;
+      const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: context_id, action_id: row.action_id }).first();
+      if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
+      await trx('access_rules').insert({
+        context_id: context_id,
+        action_id: row.action_id,
+        unit: this.UNIT_USER,
+        unit_id: row.user_id,
+        is_allow: row.is_allow,
+        orderno: orderno,
+        source: this.SOURCE_USER_RULES,
+        source_id: row.id,
+      });
+      orderno += 1;
+    }
+    // from group_rules
+    for (const row of await trx('group_rules').select('*').orderBy('id','asc')) {
+      let orderno = 1;
+      const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: context_id, action_id: row.action_id }).first();
+      if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
+      await trx('access_rules').insert({
+        context_id: context_id,
+        action_id: row.action_id,
+        unit: this.UNIT_GROUP,
+        unit_id: row.group_id,
+        is_allow: row.is_allow,
+        orderno: orderno,
+        source: this.SOURCE_GROUP_RULES,
+        source_id: row.id,
+      });
+      orderno += 1;
+    }
+    // from tier_rules
+    for (const row of await trx('tier_rules').select('*').orderBy('id','asc')) {
+      let orderno = 1;
+      const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: context_id, action_id: row.action_id }).first();
+      if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
+      await trx('access_rules').insert({
+        context_id: context_id,
+        action_id: row.action_id,
+        unit: this.UNIT_TIER,
+        unit_id: row.tier_id,
+        is_allow: row.is_allow,
+        orderno: orderno,
+        source: this.SOURCE_TIER_RULES,
+        source_id: row.id,
+      });
+      orderno += 1;
+    }
+    if (isFutureUpdate === true){
+      // mark context for future updates
+      await trx('context_copyto').insert({ context_id: context_id });
+    }
+    // invalidate cache for this context
+    await this._deleteCacheForContextRules(trx, context_id);
+  },
+
   createNewContextOnce: async function(trx, parent_id, name, addRules, force_insert_id) {
     let id = null;
     if (force_insert_id && force_insert_id > 0) {
@@ -378,57 +445,7 @@ export default {
     }
     if (addRules === true){
       // copy rule to access_rules
-      // from user_rules
-      for (const row of await trx('user_rules').select('*').orderBy('id','asc')) {
-        let orderno = 1;
-        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
-        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
-        await trx('access_rules').insert({
-          context_id: id,
-          action_id: row.action_id,
-          unit: this.UNIT_USER,
-          unit_id: row.user_id,
-          is_allow: row.is_allow,
-          orderno: orderno,
-          source: this.SOURCE_USER_RULES,
-          source_id: row.id,
-        });
-        orderno += 1;
-      }
-      // from group_rules
-      for (const row of await trx('group_rules').select('*').orderBy('id','asc')) {
-        let orderno = 1;
-        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
-        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
-        await trx('access_rules').insert({
-          context_id: id,
-          action_id: row.action_id,
-          unit: this.UNIT_GROUP,
-          unit_id: row.group_id,
-          is_allow: row.is_allow,
-          orderno: orderno,
-          source: this.SOURCE_GROUP_RULES,
-          source_id: row.id,
-        });
-        orderno += 1;
-      }
-      // from tier_rules
-      for (const row of await trx('tier_rules').select('*').orderBy('id','asc')) {
-        let orderno = 1;
-        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: id, action_id: row.action_id }).first();
-        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
-        await trx('access_rules').insert({
-          context_id: id,
-          action_id: row.action_id,
-          unit: this.UNIT_TIER,
-          unit_id: row.tier_id,
-          is_allow: row.is_allow,
-          orderno: orderno,
-          source: this.SOURCE_TIER_RULES,
-          source_id: row.id,
-        });
-        orderno += 1;
-      }
+      await this.copyDefaultRulesToContext(trx, id, true);
     }
     return id;
   },
@@ -492,10 +509,7 @@ export default {
     if (isCreateContext === true) {
       if (isCreatContextCopyRules === true) {
         // create new context as new root
-        const vroot_context_ids = await this.createNewContext(trx, [-1], `Resource for ${target}:${target_id}`, true); // copy template
-        for(const vroot_context_id of vroot_context_ids){
-          await trx('context_copyto').insert({ context_id: vroot_context_id });
-        }
+        const vroot_context_ids = await this.createNewContext(trx, [-1], `Resource for ${target}:${target_id}`, true); // copy template and mark for future updates
         parent_context_ids = vroot_context_ids;
       }
       // create new context as child of parent_context_id
@@ -675,10 +689,12 @@ export default {
     await this._accessRuleCacheDelByContextId(trx, context_id);
   },
   getResourceIdByTarget: async function(trx, target, target_id) {
+    logger.debug(`getResourceIdByTarget: target=${target}, target_id=${target_id}`);
     let resource_id = await cache.hget(`rules:resources:${target}:${target_id}`, 'id');
     if (resource_id !== undefined && resource_id !== null) return utils.parseSafeInt(resource_id);
     // not in cache, check db
-    const res = await trx('resources').select('id','target_id').where({ target }).where({ target_id }).first();
+    console.log(trx('resources').select('id','target_id').where({ target, target_id }).first().toString());
+    const res = await trx('resources').select('id','target_id').where({ target, target_id }).first();
     resource_id = res ? res.id : null;
     if (resource_id !== null) {
       await cache.hset(`rules:resources:${target}:${target_id}`, 'id', resource_id.toString());
@@ -832,54 +848,7 @@ export default {
       await trx('access_rules').where({ context_id: row.context_id, unit: this.UNIT_USER }).del();
       await trx('access_rules').where({ context_id: row.context_id, unit: this.UNIT_GROUP }).del();
       await trx('access_rules').where({ context_id: row.context_id, unit: this.UNIT_TIER }).del();
-      // from user_rules
-      for (const ur of await trx('user_rules').select('*').orderBy('id','asc')) {
-        let orderno = 1;
-        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, action_id: ur.action_id }).first();
-        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
-        await trx('access_rules').insert({
-          context_id: row.context_id,
-          action_id: ur.action_id,
-          unit: this.UNIT_USER,
-          unit_id: ur.user_id,
-          is_allow: ur.is_allow,
-          orderno: orderno,
-          source: this.SOURCE_USER_RULES,
-          source_id: ur.id,
-        });
-      }
-      // from group_rules
-      for (const gr of await trx('group_rules').select('*').orderBy('id','asc')) {
-        let orderno = 1;
-        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, action_id: gr.action_id }).first();
-        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
-        await trx('access_rules').insert({
-          context_id: row.context_id,
-          action_id: gr.action_id,
-          unit: this.UNIT_GROUP,
-          unit_id: gr.group_id,
-          is_allow: gr.is_allow,
-          orderno: orderno,
-          source: this.SOURCE_GROUP_RULES,
-          source_id: gr.id,
-        });
-      }
-      // from tier_rules
-      for (const tr of await trx('tier_rules').select('*').orderBy('id','asc')) {
-        let orderno = 1;
-        const maxorderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, action_id: tr.action_id }).first();
-        if (maxorderno && maxorderno.maxorderno) orderno = maxorderno.maxorderno + 1;
-        await trx('access_rules').insert({
-          context_id: row.context_id,
-          action_id: tr.action_id,
-          unit: this.UNIT_TIER,
-          unit_id: tr.tier_id,
-          is_allow: tr.is_allow,
-          orderno: orderno,
-          source: this.SOURCE_TIER_RULES,
-          source_id: tr.id,
-        });
-      }
+      await this.copyDefaultRulesToContext(trx, row.context_id, false);
       // invalidate cache for this context
       await this._deleteCacheForContextRules(trx, row.context_id);
     }

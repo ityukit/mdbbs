@@ -3,6 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import database from '../../../database.js';
 import init from '../../../init.js';
 import utils from '../../../lib/utils.js';
+import access from '../../../lib/access.js';
 
 const settings = init.getSettings();
 
@@ -20,6 +21,33 @@ async function createThread(nodeId, title, contentTitle, content, parser, tags, 
     }
     parentId = chk1[0].id;
   }
+  // get dirtree id
+  let dirtreeId = -1;
+  if (parentId !== -1) {
+    const chk2 = await tx.select('id').from('dirtree').where({ child_id: parentId });
+    if (chk2.length === 0) {
+      return res.status(500).json({ error: 'Root directory not found' });
+    }
+    dirtreeId = chk2[0].id;
+  }
+  // access check(dirtreeId)
+  if (!await access.isAllowed(tx, 
+                              req.session.user.id,
+                              'thread.create',
+                              access.TARGET_TREE,
+                              dirtreeId,
+                              {})) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  if (!await access.isAllowed(tx, 
+                              req.session.user.id,
+                              'content.create',
+                              access.TARGET_TREE,
+                              dirtreeId,
+                              {})) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   // create contents
   const contentId = await tx('contents').insert({
     title: contentTitle,
@@ -43,15 +71,6 @@ async function createThread(nodeId, title, contentTitle, content, parser, tags, 
     parent_id: -1,
     child_id: contentId[0].id,
   });
-  // get dirtree id
-  let dirtreeId = -1;
-  if (parentId !== -1) {
-    const chk2 = await tx.select('id').from('dirtree').where({ child_id: parentId });
-    if (chk2.length === 0) {
-      return res.status(500).json({ error: 'Root directory not found' });
-    }
-    dirtreeId = chk2[0].id;
-  }
   // create thread
   let threadId = null;
   let c = 0;
@@ -146,6 +165,25 @@ async function createThread(nodeId, title, contentTitle, content, parser, tags, 
     }
   }
   // OK!
+  // permission set
+  await access.createResource(
+    tx,
+    access.TARGET_THREAD,
+    threadid[0].id,
+    access.TARGET_TREE,
+    dirtreeId,
+    true,
+    false,
+  );
+  await access.createResource(
+    tx,
+    access.TARGET_CONTENTS,
+    contentId[0].id,
+    access.TARGET_THREAD,
+    threadid[0].id,
+    true,
+    false,
+  );
   return res.json({
     message: 'thread created successfully'
   });

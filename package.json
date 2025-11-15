@@ -17,6 +17,7 @@
     "build:db:reset": "npm run build:migrate:reset && npm run build:migrate && npm run build:seed:run",
     "start": "NODE_ENV=production node ./src/bin/run.js",
     "userApply": "NODE_ENV=production node ./src/bin/userApply.js",
+    "copyDefaultRulesToContext": "NODE_ENV=production node ./src/bin/copyDefaultRulesToContext.js",
     "dev:createPGDB": "NODE_ENV=development node ./src/bin/createPGDB.js",
     "dev:clearCache": "NODE_ENV=development node ./src/bin/clearCache.js",
     "dev:build:migrate": "NODE_ENV=development ./node_modules/.bin/knex migrate:latest --env development --knexfile ./src/knex/migrate.js",
@@ -29,6 +30,7 @@
     "dev:build:db:reset": "npm run dev:build:migrate:reset && npm run dev:build:migrate && npm run dev:build:seed:run",
     "dev:start": "NODE_ENV=development node ./src/bin/run.js",
     "dev:userApply": "NODE_ENV=development node ./src/bin/userApply.js",
+    "dev:copyDefaultRulesToContext": "NODE_ENV=development node ./src/bin/copyDefaultRulesToContext.js",
     "dev:sample": "npm run dev:build:db:reset && NODE_ENV=development node",
     "dev:debug:CleanRun": "npm run dev:createPGDB -- --user postgres --password postgres --rebuild && npm run dev:clearCache && npm run dev:build:db:reset && npm run dev:userApply -- --id admin --password admin --tier owner && npm run dev:start",
     "dev": "npm run dev:build:db && npm run dev:start"

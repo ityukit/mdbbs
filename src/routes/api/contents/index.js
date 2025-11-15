@@ -1,26 +1,13 @@
 import utils from '../../../lib/utils.js';
 import parser from '../../../lib/parser.js';
-import cacheUser from '../../../lib/cacheUser.js';
+//import cacheUser from '../../../lib/cacheUser.js';
 import database from '../../../database.js';
 import init from '../../../init.js';
+import access from '../../../lib/access.js';
 
 const settings = init.getSettings();
 
-async function usermapping(uid,db){
-  const user = await cacheUser.getUserById(uid, db);
-  if (!user) return null;
-  return {
-    id: user.id,
-    // login_id: user.login_id,
-    display_name: user.display_name,
-    email: user.email,
-    description: user.description,
-    created_at: user.created_at,
-    created_at_str: settings.datetool.format(new Date(user.created_at)),
-  }
-}
-
-async function get_index(node, tags, nodeWord, subTree, start, len, db) {
+async function get_index(node, tags, nodeWord, subTree, start, len, req, db) {
   let data = [];
 
   let tx = null;
@@ -142,8 +129,8 @@ async function get_index(node, tags, nodeWord, subTree, start, len, db) {
         contents: (await parser.parse(d.parser, contentesParts, d.cid)).main,
         emitContents: emitContents,
         description: d.description,
-        updated_user: await usermapping(d.updated_user_id, db),
-        created_user: await usermapping(d.created_user_id, db),
+        updated_user: await access.usermapping(req.session.user.id,d.updated_user_id,access.TARGET_CONTENTS,d.cid, db),
+        created_user: await access.usermapping(req.session.user.id,d.created_user_id,access.TARGET_CONTENTS,d.cid, db),
         updated_at: d.updated_at.toISOString(),
         updated_at_str: settings.datetool.format(d.updated_at),
         created_at: d.created_at.toISOString(),
@@ -176,7 +163,7 @@ export default async function index(app, main, api, subdir, moduleName, settings
     // safety
     if (len > 1000) len = 1000;
     let data = await database.transaction(async (tx) => {
-      return await get_index(node, tags, nodeWord, subTree, start, len, tx);
+      return await get_index(node, tags, nodeWord, subTree, start, len,req, tx);
     });
     res.json(data);
   });
