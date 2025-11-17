@@ -10,12 +10,16 @@ const logger = Logger();
 
 
 
-function retAllowed(val) {
+function retAllowedNul(val) {
   if (val === true) return true;
   if (val === false) return false;
   if (val === 'true') return true;
   if (val === 'false') return false;
-  return false;
+  return null;
+}
+function retAllowed(val) {
+  const ret = retAllowedNul(val);
+  return ret === null ? false : ret;
 }
 
 export default {
@@ -251,40 +255,54 @@ export default {
             logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - checking context_ids=${current_context_ids.join(',')}`);
             let found = null;
             for (const cid of current_context_ids) {
-              logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id}, group_ids = ${JSON.stringify(group_ids)} , tier_ids = ${JSON.stringify(tier_ids)} - checking context_id=${cid}`);
-              const q = trx.select('is_allow')
-                                    .from('access_rules')
-                                    .where({ action_id: actionid, context_id: cid })
-                                    .andWhere((qb) => {
-                                      qb.where((sqb) => {
-                                        sqb.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
-                                      });
-                                      if (group_ids.length > 0) {
-                                        qb.orWhere((sqb) => {
-                                          sqb.where('unit', this.UNIT_GROUP).whereIn('unit_id', group_ids);
-                                        });
-                                      }
-                                      if (tier_ids[cid] && tier_ids[cid].length > 0) {
-                                        qb.orWhere((sqb) => {
-                                          sqb.where('unit', this.UNIT_TIER).whereIn('unit_id', tier_ids[cid]);
-                                        });
-                                      }
-                                      qb.orWhere((sqb) => {
-                                        sqb.where('unit', this.UNIT_ALL);
-                                      });
-                                    })
-                                    .orderBy('orderno', 'asc')
-                                    .limit(1);
-              logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - running query: ${q.toString()}`);
-              const rows = await q;
-              if (rows.length > 0) {
-                if (rows[0].is_allow) {
-                  found = rows[0].is_allow;
-                }else{
-                  // deny found, stop searching
-                  found = false;
-                  break;
+              let acache = await cache.hget(`rules:access_rules_lookup:${cid}`, `${actionid}:${userid}`);
+              if (acache !== undefined && acache !== null) {
+                logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id}, group_ids = ${JSON.stringify(group_ids)} , tier_ids = ${JSON.stringify(tier_ids)} - cache hit for context_id=${cid}: found=${acache}`);
+                acache = retAllowedNul(acache);
+                if (acache !== null) {
+                  found = acache;
+                  if (found === false){
+                    // deny found, stop searching
+                    break;
+                  }
                 }
+              }else{
+                logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id}, group_ids = ${JSON.stringify(group_ids)} , tier_ids = ${JSON.stringify(tier_ids)} - checking context_id=${cid}`);
+                const q = trx.select('is_allow')
+                                      .from('access_rules')
+                                      .where({ action_id: actionid, context_id: cid })
+                                      .andWhere((qb) => {
+                                        qb.where((sqb) => {
+                                          sqb.where('unit', this.UNIT_USER).andWhere('unit_id', userid);
+                                        });
+                                        if (group_ids.length > 0) {
+                                          qb.orWhere((sqb) => {
+                                            sqb.where('unit', this.UNIT_GROUP).whereIn('unit_id', group_ids);
+                                          });
+                                        }
+                                        if (tier_ids[cid] && tier_ids[cid].length > 0) {
+                                          qb.orWhere((sqb) => {
+                                            sqb.where('unit', this.UNIT_TIER).whereIn('unit_id', tier_ids[cid]);
+                                          });
+                                        }
+                                        qb.orWhere((sqb) => {
+                                          sqb.where('unit', this.UNIT_ALL);
+                                        });
+                                      })
+                                      .orderBy('orderno', 'asc')
+                                      .limit(1);
+                logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - running query: ${q.toString()}`);
+                const rows = await q;
+                if (rows.length > 0) {
+                  if (rows[0].is_allow) {
+                    found = rows[0].is_allow;
+                  }else{
+                    // deny found, stop searching
+                    found = false;
+                    break;
+                  }
+                }
+                await cache.hset(`rules:access_rules_lookup:${cid}`, `${actionid}:${userid}`, found === null ? 'null' : found.toString());
               }
             }
             logger.debug(`isMultipleAllowed: userid=${userid}, action_name=${action_name}, target=${target}, target_id=${target_id} - found=${found}`);
@@ -417,7 +435,87 @@ export default {
     // invalidate cache for this context
     await this._deleteCacheForContextRules(trx, context_id);
   },
-
+  deleteDefaultRulesFromContext: async function(trx, context_id) {
+    // delete all user_rules, group_rules, tier_rules in access_rules
+    await trx('access_rules').where({ context_id: context_id, source: this.SOURCE_USER_RULES }).del();
+    await trx('access_rules').where({ context_id: context_id, source: this.SOURCE_GROUP_RULES }).del();
+    await trx('access_rules').where({ context_id: context_id, source: this.SOURCE_TIER_RULES }).del();
+  },
+  updateDefaultRulesToContext: async function(trx, context_id) {
+    // 一旦、既存のルールのUSER_RULESの後ろ側をdefault rules個数分ずらす
+    // default rulesの挿入が終わってから、action_id毎にordernoを詰める
+    const userRuleCount = await trx('user_rules').count('id as cnt').first();
+    const groupRuleCount = await trx('group_rules').count('id as cnt').first();
+    const tierRuleCount = await trx('tier_rules').count('id as cnt').first();
+    const maxOrderno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: context_id }).first();
+    const maxOrdernoValue = maxOrderno && maxOrderno.maxorderno ? maxOrderno.maxorderno : 0;
+    const actionIds = await trx('actions').select('id').orderBy('id','asc');
+    for (const actionRow of actionIds){
+      const rows = await trx('access_rules').min('orderno as minorderno').where({ context_id: context_id, action_id: actionRow.id }).whereIn('source', [this.SOURCE_USER_RULES, this.SOURCE_GROUP_RULES, this.SOURCE_TIER_RULES]).first();
+      if (!rows || !rows.minorderno){
+        logger.debug(`updateDefaultRulesToContext: context_id=${context_id}, action_id=${actionRow.id}, minorderno=${rows.minorderno}`);
+        await trx('access_rules').update('orderno', trx.raw(`orderno + ?`, [maxOrdernoValue+userRuleCount.cnt+groupRuleCount.cnt+tierRuleCount.cnt+2])).where({ context_id: context_id, action_id: actionRow.id }).andWhere('orderno', '>', rows.minorderno || 0);
+      }else{
+        logger.debug(`updateDefaultRulesToContext: context_id=${context_id}, action_id=${actionRow.id}, have no rules after default rules min orderno`);
+      }
+    }
+    // delete existing default rules
+    await this.deleteDefaultRulesFromContext(trx, context_id);
+    // insert new user_rules
+    let orderno = maxOrdernoValue + 1;
+    for (const row of await trx('user_rules').select('*').orderBy('id','asc')) {
+      await trx('access_rules').insert({
+        context_id: context_id,
+        action_id: row.action_id,
+        unit: this.UNIT_USER,
+        unit_id: row.user_id,
+        is_allow: row.is_allow,
+        orderno: orderno,
+        source: this.SOURCE_USER_RULES,
+        source_id: row.id,
+      });
+      orderno += 1;
+    }
+    // insert new group_rules
+    for (const row of await trx('group_rules').select('*').orderBy('id','asc')) {
+      await trx('access_rules').insert({
+        context_id: context_id,
+        action_id: row.action_id,
+        unit: this.UNIT_GROUP,
+        unit_id: row.group_id,
+        is_allow: row.is_allow,
+        orderno: orderno,
+        source: this.SOURCE_GROUP_RULES,
+        source_id: row.id,
+      });
+      orderno += 1;
+    }
+    // insert new tier_rules
+    for (const row of await trx('tier_rules').select('*').orderBy('id','asc')) {
+      await trx('access_rules').insert({
+        context_id: context_id,
+        action_id: row.action_id,
+        unit: this.UNIT_TIER,
+        unit_id: row.tier_id,
+        is_allow: row.is_allow,
+        orderno: orderno,
+        source: this.SOURCE_TIER_RULES,
+        source_id: row.id,
+      });
+      orderno += 1;
+    }
+    // renumber orderno per action_id
+    for(const actionRow of actionIds){
+      const rows = await trx('access_rules').select('id').where({ context_id: context_id, action_id: actionRow.action_id }).orderBy('orderno','asc');
+      let orderno = 1;
+      for(const row of rows){
+        await trx('access_rules').where({ id: row.id }).update({ orderno: orderno });
+        orderno += 1;
+      }
+    }
+    // invalidate cache for this context
+    await this._deleteCacheForContextRules(trx, context_id);
+  },
   createNewContextOnce: async function(trx, parent_id, name, addRules, force_insert_id) {
     let id = null;
     if (force_insert_id && force_insert_id > 0) {
@@ -742,6 +840,7 @@ export default {
   },
   _deleteCacheForContextRules: async function(trx, context_id) {
     await cache.del(`rules:context:${context_id}`);
+    await cache.del(`rules:access_rules_lookup:${context_id}`);
     // invalidate all resources under this context
     const resourcesToInvalidate = await trx('map_resource_context as m')
                                         .join('resources as r', 'm.resource_id', 'r.id')
@@ -844,11 +943,18 @@ export default {
   updatedRules: async function(trx) {
     // copy all user_rules, group_rules, tier_rules to access_rules
     for (const row of await trx('context_copyto').select('context_id').orderBy('context_id','asc')) {
-      // delete existing rules in access_rules
-      await trx('access_rules').where({ context_id: row.context_id, unit: this.UNIT_USER }).del();
-      await trx('access_rules').where({ context_id: row.context_id, unit: this.UNIT_GROUP }).del();
-      await trx('access_rules').where({ context_id: row.context_id, unit: this.UNIT_TIER }).del();
+      // delete existing user_rules, group_rules, tier_rules in access_rules
+      const userminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_USER_RULES }).first();
+      const groupminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_GROUP_RULES }).first();
+      const tierminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_TIER_RULES }).first();
+      await this.deleteDefaultRulesFromContext(trx, row.context_id);
       await this.copyDefaultRulesToContext(trx, row.context_id, false);
+      const newuserminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_USER_RULES }).first();
+      const newgroupminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_GROUP_RULES }).first();
+      const newtierminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_TIER_RULES }).first();
+      const newusermaxno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, source: this.SOURCE_USER_RULES }).first();
+      const newgroupmaxno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, source: this.SOURCE_GROUP_RULES }).first();
+      const newtiermaxno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, source: this.SOURCE_TIER_RULES }).first();
       // invalidate cache for this context
       await this._deleteCacheForContextRules(trx, row.context_id);
     }
