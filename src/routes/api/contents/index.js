@@ -7,6 +7,19 @@ import access from '../../../lib/access.js';
 
 const settings = init.getSettings();
 
+async function user_mapping(user_id, target_user_id, target_type, target_id, db) {
+  const result = await access.usermapping(user_id, target_user_id, target_type, target_id, db);
+  if (!result) return null;
+  return {
+    id: result.id || null,
+    display_name: result.display_name || '',
+    email: result.email || '',
+    description: result.description || '',
+    created_at: result.created_at || null,
+    created_at_str: settings.datetool.format(new Date(result.created_at)) || '',
+  };
+}
+
 async function get_index(node, tags, nodeWord, subTree, start, len, req, db) {
   let data = [];
 
@@ -129,8 +142,8 @@ async function get_index(node, tags, nodeWord, subTree, start, len, req, db) {
         contents: (await parser.parse(d.parser, contentesParts, d.cid)).main,
         emitContents: emitContents,
         description: d.description,
-        updated_user: await access.usermapping(req.session.user.id,d.updated_user_id,access.TARGET_CONTENTS,d.cid, db),
-        created_user: await access.usermapping(req.session.user.id,d.created_user_id,access.TARGET_CONTENTS,d.cid, db),
+        updated_user: await user_mapping(req.session.user.id,d.updated_user_id,access.TARGET_CONTENTS,d.cid, db),
+        created_user: await user_mapping(req.session.user.id,d.created_user_id,access.TARGET_CONTENTS,d.cid, db),
         updated_at: d.updated_at.toISOString(),
         updated_at_str: settings.datetool.format(d.updated_at),
         created_at: d.created_at.toISOString(),
