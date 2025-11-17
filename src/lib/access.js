@@ -940,12 +940,16 @@ export default {
       await this._deleteCacheForTierRules(trx, tierid);
     }
   },
-  updatedRules: async function(trx) {
+  updatedRules: async function(trx, context_id) {
+    // invalidate cache for this context
+    await this._deleteCacheForContextRules(trx, context_id);
+  },
+  updatedDefaultRules: async function(trx) {
     // copy all user_rules, group_rules, tier_rules to access_rules
     for (const row of await trx('context_copyto').select('context_id').orderBy('context_id','asc')) {
       await this.updateDefaultRulesToContext(trx, row.context_id);
       // invalidate cache for this context
-      await this._deleteCacheForContextRules(trx, row.context_id);
+      await this.updatedRules(trx, row.context_id);
     }
   },
   updateContextData: async function(trx, context_id,isUpdateEnabled) {
