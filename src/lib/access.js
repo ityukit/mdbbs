@@ -943,18 +943,7 @@ export default {
   updatedRules: async function(trx) {
     // copy all user_rules, group_rules, tier_rules to access_rules
     for (const row of await trx('context_copyto').select('context_id').orderBy('context_id','asc')) {
-      // delete existing user_rules, group_rules, tier_rules in access_rules
-      const userminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_USER_RULES }).first();
-      const groupminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_GROUP_RULES }).first();
-      const tierminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_TIER_RULES }).first();
-      await this.deleteDefaultRulesFromContext(trx, row.context_id);
-      await this.copyDefaultRulesToContext(trx, row.context_id, false);
-      const newuserminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_USER_RULES }).first();
-      const newgroupminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_GROUP_RULES }).first();
-      const newtierminno = await trx('access_rules').min('orderno as minorderno').where({ context_id: row.context_id, source: this.SOURCE_TIER_RULES }).first();
-      const newusermaxno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, source: this.SOURCE_USER_RULES }).first();
-      const newgroupmaxno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, source: this.SOURCE_GROUP_RULES }).first();
-      const newtiermaxno = await trx('access_rules').max('orderno as maxorderno').where({ context_id: row.context_id, source: this.SOURCE_TIER_RULES }).first();
+      await this.updateDefaultRulesToContext(trx, row.context_id);
       // invalidate cache for this context
       await this._deleteCacheForContextRules(trx, row.context_id);
     }
